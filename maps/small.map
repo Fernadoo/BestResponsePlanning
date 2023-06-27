@@ -1,0 +1,10 @@
+# --goals 5_5 3_3 3_6 (first 2 for `individual`, all 3 for `team`)
+# MAX_NUM_STEP 40 (for `individual`) 60 (for `team`)
+@@@@@@@@
+@......@
+@.@....@
+@...@..@
+@.@...@@
+@...@..@
+@......@
+@@@@@@@@

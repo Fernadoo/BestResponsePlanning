@@ -22,7 +22,7 @@ __pycache__/
 
 *.mov
 
-# *.mp4
+*.mp4
 
 *.gif
 

@@ -30,10 +30,10 @@ class AStarAgent(object):
         ncols = len(layout[0])
 
         def euc_heu(loc):
-            return np.sqrt(np.sum(np.square(loc - self.goal)))
+            return np.sqrt(np.sum(np.square(np.array(loc) - np.array(self.goal))))
 
         def man_heu(loc):
-            return np.sum(np.abs(loc - self.goal))
+            return np.sum(np.abs(np.array(loc) - np.array(self.goal)))
 
         def get_successors(node):
             f, g, prev_action, curr_loc = node
@@ -41,8 +41,8 @@ class AStarAgent(object):
             for a in range(5):
                 succ_loc = move(curr_loc, a)
                 if layout[succ_loc] == 1 or\
-                        succ_loc[0] not in range(nrows) or\
-                        succ_loc[1] not in range(ncols):
+                        succ_loc[0] not in range(1, nrows + 1) or\
+                        succ_loc[1] not in range(1, ncols + 1):
                     continue
                 heu = euc_heu(succ_loc)
                 succ_node = Node(heu + g + 1, g + 1, a, succ_loc)
@@ -71,13 +71,15 @@ class AStarAgent(object):
                 q.put(succ_node)
                 parent_dict[succ_node] = curr_node
             visited.append(curr_node.Loc)
-            raise RuntimeError("No astar plan found!")
+        raise RuntimeError("No astar plan found!")
 
     def act(self, state):
         N, prev_actions, locations, layout = state
 
         if self.plan is None:
             self.plan = self.astar(locations[self.label], layout)
+        if locations[self.label] == self.goal:
+            return 0
 
         action = self.plan[self.round]
         self.round += 1

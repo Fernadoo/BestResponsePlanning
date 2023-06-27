@@ -44,12 +44,11 @@ class MAPF(object):
 
         all_states = []
         for idxs in product(range(nrows * ncols), repeat=self.N):
-            if np.all(idxs == idxs[0]):
-                continue
-            state = []
-            for idx in idxs:
-                state.append((idx2row(idx), idx2col(idx)))
-            all_states.append(state)
+            if len(set(idxs)) == self.N:
+                state = []
+                for idx in idxs:
+                    state.append((idx2row(idx), idx2col(idx)))
+                all_states.append(state)
 
         return all_states
 
@@ -59,7 +58,7 @@ class MAPF(object):
         returns a successor state or a vector of prob.
         """
         N, prev_actions, locations, layout = self.state
-        avai_actions = self.get_avai_actions(self.state)
+        avai_actions = self.get_avai_actions()
 
         succ_locations = []
         for i in range(N):
@@ -68,7 +67,7 @@ class MAPF(object):
             succ_loc = move(locations[i], action_profile[i])
             succ_locations.append(succ_loc)
 
-        self.state = State(N, action_profile, locations, layout)
+        self.state = State(N, action_profile, tuple(succ_locations), layout)
         return self.state
 
     def get_avai_actions(self):
@@ -88,8 +87,8 @@ class MAPF(object):
             for a in range(5):
                 succ_loc = move(loc, a)
                 if layout[succ_loc] == 1 or\
-                        succ_loc[0] not in range(nrows) or\
-                        succ_loc[1] not in range(ncols):
+                        succ_loc[0] not in range(1, nrows + 1) or\
+                        succ_loc[1] not in range(1, ncols + 1):
                     continue
                 actions.append(a)
             avai_actions.append(actions)
@@ -104,17 +103,18 @@ class MAPF(object):
         _, _, locations, _ = self.state
         if locations == self.goals:
             return True
+        return False
 
     def run(self):
         """
         Returns history: a list of aux info at each state,
         In this env, returns a list of (actions, succ_locations)
         """
-        history = [(None, self.state[2])]
+        history = [(None, self.state.Locations)]
         while not self.check_end():
             action_profile = []
-            for i in self.N:
+            for i in range(self.N):
                 action_profile.append(self.agents[i].act(self.state))
-            _, locations, _ = self.transit(action_profile)
+            _, action_profile, locations, _ = self.transit(action_profile)
             history.append((action_profile, locations))
         return history

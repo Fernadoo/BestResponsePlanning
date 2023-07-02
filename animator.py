@@ -10,11 +10,10 @@ from matplotlib import animation
 
 # Colors = ['green', 'blue', 'orange']
 Colors = list(mcolors.CSS4_COLORS)
-FPS = 60
 
 
 class Animation:
-    def __init__(self, agents, my_map, starts, goals, history):
+    def __init__(self, agents, my_map, starts, goals, history, FPS):
         # self.radius = len(agents['p1']) // 2
         self.my_map = np.flip(np.transpose(my_map), 1)
         # self.my_map = np.flip(np.transpose(my_map), 0)
@@ -114,7 +113,7 @@ class Animation:
             #                   alpha=0)
             #     self.sensors[f'{i}-{j}'] = line
             #     self.artists.append(line)
-
+        self.FPS = FPS
         self.animation = animation.FuncAnimation(self.fig, self.animate_func,
                                                  init_func=self.init_func,
                                                  frames=int(self.T + 1) * FPS,
@@ -141,7 +140,7 @@ class Animation:
 
     def animate_func(self, t):
         for k in range(len(self.paths)):
-            pos = self.get_state(t / FPS, self.paths[k])
+            pos = self.get_state(t / self.FPS, self.paths[k])
             self.agents[k].center = (pos[0], pos[1])
             self.agent_names[k].set_position((pos[0], pos[1]))
 

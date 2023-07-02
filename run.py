@@ -1,4 +1,4 @@
-from astar_agent import AStarAgent
+from search_agent import AStarAgent, DijkstraAgent
 from ma_env import MAPF
 from animator import Animation
 
@@ -79,20 +79,33 @@ def show_args(args):
         print('-------------\n')
 
 
+def show_hist(history):
+    action_list = ['stop', 'up', 'right', 'down', 'left']
+    for t, info in enumerate(history):
+        actions, locations = info
+        if t == 0:
+            print(f'T{t}: start from {locations}')
+        else:
+
+            print(f'T{t}: '
+                  f'actions: {list(map(lambda a: action_list[a], actions))}\t'
+                  f'locations: {locations}')
+
+
 if __name__ == '__main__':
     args = get_args()
     show_args(args)
 
     agents = []
-    for i, name in enumerate(args.agents):
-        agents.append(AStarAgent(i, args.goals[name]))
+    agents.append(AStarAgent(0, args.goals[args.agents[0]]))
+    agents.append(DijkstraAgent(1, args.goals[args.agents[1]]))
 
     game = MAPF(agents,
                 list(args.starts.values()),
                 list(args.goals.values()),
                 args.map)
     history = game.run()
-    print(history)
+    show_hist(history)
 
     if args.vis:
         paths = []
@@ -102,7 +115,8 @@ if __name__ == '__main__':
                              args.map,
                              list(args.starts.values()),
                              list(args.goals.values()),
-                             paths)
+                             paths,
+                             FPS=60)
         animator.show()
         if args.save:
             animator.save(file_name=args.save, speed=100)

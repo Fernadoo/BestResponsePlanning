@@ -25,3 +25,13 @@ def reverse_move(loc, action):
         return tuple(np.subtact(loc, [1, 0]))
     elif action == 'left' or action == 4:
         return tuple(np.subtact(loc, [0, -1]))
+
+
+def rev_action(action):
+    """
+    Returns the reversed action
+    """
+    if action == 0:
+        return 0
+    else:
+        return (action - 1 + 2) % 4 + 1

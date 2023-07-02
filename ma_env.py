@@ -25,7 +25,7 @@ class MAPF(object):
         self.starts = tuple(starts)
         self.goals = tuple(goals)
         self.layout = layout
-        self.all_states = self.enumerate_all()
+        # self.all_states = self.enumerate_all()
 
         self.state = State(self.N, None, self.starts, self.layout)
 

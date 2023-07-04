@@ -1,4 +1,4 @@
-from utils import move, rev_action
+from utils import move, rev_action, hash
 
 from queue import PriorityQueue
 from collections import namedtuple
@@ -12,10 +12,6 @@ def euc_dist(loc, dest):
 
 def man_dist(loc, dest):
     return np.sum(np.abs(np.array(loc) - np.array(dest)))
-
-
-def hash(num_content):
-    return str(num_content)
 
 
 """
@@ -155,7 +151,6 @@ class DijkstraAgent(object):
         self.label = label
         self.goal = goal
         self.policy = None
-        self.round = 0
 
     def act(self, state):
         N, prev_actions, locations, layout = state

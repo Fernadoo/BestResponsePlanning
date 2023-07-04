@@ -29,29 +29,6 @@ class MAPF(object):
 
         self.state = State(self.N, None, self.starts, self.layout)
 
-    def enumerate_all(self):
-        """
-        Enumerate the set of all env states.
-        """
-        nrows = len(self.layout)
-        ncols = len(self.layout[0])
-
-        def idx2row(idx):
-            return idx // nrows
-
-        def idx2col(idx):
-            return idx % ncols
-
-        all_states = []
-        for idxs in product(range(nrows * ncols), repeat=self.N):
-            if len(set(idxs)) == self.N:
-                state = []
-                for idx in idxs:
-                    state.append((idx2row(idx), idx2col(idx)))
-                all_states.append(state)
-
-        return all_states
-
     def transit(self, action_profile):
         """
         Given a state and an action profile,

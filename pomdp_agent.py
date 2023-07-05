@@ -4,6 +4,7 @@ from utils import move, hash, soft_max, enumerate_all
 import os
 from collections import namedtuple
 from itertools import product
+from copy import deepcopy
 
 import numpy as np
 from mdptoolbox import mdp
@@ -12,7 +13,7 @@ from mdptoolbox import mdp
 class MDPAgent(object):
     """docstring for MDPAgent"""
 
-    def __init__(self, label, goal):
+    def __init__(self, label, goal, belief_update=False):
         super(MDPAgent, self).__init__()
         self.label = label
         self.goal = goal
@@ -23,6 +24,7 @@ class MDPAgent(object):
         # policy := state -> action_dist
         self.beliefs = None
         self.policy = None
+        self.belief_update = belief_update
 
     def init_belief(self, num_agents, layout):
         """
@@ -59,8 +61,27 @@ class MDPAgent(object):
 
         return beliefs_pi, beliefs_prob
 
-    def update_belief(self, pred_state, pred_action):
-        return
+    def update_belief(self, prev_actions):
+        beliefs_pi, beliefs_prob = self.beliefs
+        new_beliefs_prob = deepcopy(beliefs_prob)
+        prev_locs = self.prev_locations
+
+        # Bayesian update:
+        # B_pi_i^j \prop pi_i^j[Si][ai] * pi_i^j
+        for i, Pi_i in enumerate(beliefs_pi):
+            if i == self.label:
+                continue
+            new_probs = np.zeros(len(Pi_i))
+            for j, pi in enumerate(Pi_i):
+                new_probs[j] = (
+                    Pi_i[j][hash(prev_locs[i])][prev_actions[i]]
+                    * beliefs_prob[i][j]
+                )
+            # soft-update
+            new_probs += 0.01
+            new_beliefs_prob[i] = new_probs / np.sum(new_probs)
+
+        return beliefs_pi, new_beliefs_prob
 
     def translate_solve(self):
         """
@@ -82,6 +103,19 @@ class MDPAgent(object):
             given a tuple of locations and an action profile,
             returns the successor locations.
             """
+            # If edge conflict, no valid transition
+            if locations == 'EDGECONFLICT':
+                return 'EDGECONFLICT'
+
+            # If goal, no valid transition
+            if locations[self.label] == self.goal:
+                return tuple(locations)
+
+            # If vertex conflict, no valid transition
+            for i, other_loc in enumerate(locations):
+                if i != self.label and other_loc == locations[self.label]:
+                    return tuple(locations)
+
             succ_locations = []
             for i in range(self.num_agents):
                 succ_loc = move(locations[i], action_profile[i])
@@ -92,6 +126,14 @@ class MDPAgent(object):
                     succ_locations.append(locations[i])
                 else:
                     succ_locations.append(succ_loc)
+
+            # If adjacent swap, mark as edge conflict
+            for i, other_loc in enumerate(succ_locations):
+                if i != self.label:
+                    if other_loc == locations[self.label] and\
+                            succ_locations[self.label] == locations[i]:
+                        return 'EDGECONFLICT'
+
             return tuple(succ_locations)
 
         def R_ma(pred_locs, succ_locs):
@@ -100,15 +142,15 @@ class MDPAgent(object):
             given the prev and succ locations,
             returns the reward.
             """
+            # Edge conflict
+            if succ_locs == 'EDGECONFLICT':
+                return -1000
+
+            # Vertex conflict
             for i, other_loc in enumerate(succ_locs):
-                if i != self.label:
-                    # Vertex conflict
-                    if other_loc == succ_locs[self.label]:
-                        return -100
-                    # Edge conflict
-                    if other_loc == pred_locs[self.label] and\
-                            succ_locs[self.label] == pred_locs[i]:
-                        return -100
+                if i != self.label and other_loc == succ_locs[self.label]:
+                    return -1000
+
             if succ_locs[self.label] == self.goal:
                 return 1000
             return -1
@@ -116,6 +158,7 @@ class MDPAgent(object):
         # Get all possible states
         if getattr(self, 'S', None) is None:
             self.S = enumerate_all(self.num_agents, self.layout)
+            self.S.append('EDGECONFLICT')
             self.num_all = len(self.S)
 
         S = self.S
@@ -131,6 +174,12 @@ class MDPAgent(object):
                 Sj = T_ma(Si, actions)
                 j = S.index(Sj)
                 A = actions[self.label]
+
+                # Starts with an edge conflict, always ends the same
+                if Si == 'EDGECONFLICT':
+                    T[A, i, j] = 1
+                    continue
+
                 # Treat all the others as transition noises
                 for joint_idxs in product(*beliefs_num):
                     noise = 1
@@ -154,6 +203,12 @@ class MDPAgent(object):
                 j = S.index(Sj)
                 A = actions[self.label]
                 reward = R_ma(Si, Sj)
+
+                # Only cares about the landing state
+                if Sj == 'EDGECONFLICT':
+                    R[A, i, j] = reward
+                    continue
+
                 for joint_idxs in product(*beliefs_num):
                     coef = 1
                     for op_id, pi_id in enumerate(joint_idxs):
@@ -186,6 +241,25 @@ class MDPAgent(object):
         if self.policy is None:
             self.policy = self.translate_solve()
 
+        # Alt2: Update the belief and replan
+        if prev_actions is not None and self.belief_update:
+            self.beliefs = self.update_belief(prev_actions)
+            self.policy = self.translate_solve()
+
+        self.print_belief(self.beliefs[1][0])
         Si = self.S.index(locations)
         action = self.policy[Si]
+        self.prev_locations = locations
         return action
+
+    def print_belief(self, probs):
+        idx = 0
+        belief_map = np.zeros(shape=self.layout.shape)
+        for r in range(len(self.layout)):
+            for c in range(len(self.layout[0])):
+                if self.layout[r, c] == 1 or (r, c) == self.goal:
+                    belief_map[r, c] = np.nan
+                else:
+                    belief_map[r, c] = np.round(probs[idx], 3)
+                    idx += 1
+        print(belief_map, '\n')

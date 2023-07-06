@@ -53,7 +53,7 @@ class MDPAgent(object):
                 for loc in policy:
                     action_dist = [0, 0, 0, 0, 0]
                     action_dist[policy[loc]] = 1
-                    # action_dist = soft_max(action_dist)
+                    action_dist = soft_max(action_dist)
                     policy[loc] = action_dist
                 beliefs_pi[i].append(policy)
                 beliefs_prob[i].append(NORM_PR)
@@ -246,20 +246,26 @@ class MDPAgent(object):
             self.beliefs = self.update_belief(prev_actions)
             self.policy = self.translate_solve()
 
-        self.print_belief(self.beliefs[1][0])
+        self.print_belief(self.beliefs)
         Si = self.S.index(locations)
         action = self.policy[Si]
         self.prev_locations = locations
         return action
 
-    def print_belief(self, probs):
-        idx = 0
-        belief_map = np.zeros(shape=self.layout.shape)
-        for r in range(len(self.layout)):
-            for c in range(len(self.layout[0])):
-                if self.layout[r, c] == 1 or (r, c) == self.goal:
-                    belief_map[r, c] = np.nan
-                else:
-                    belief_map[r, c] = np.round(probs[idx], 3)
-                    idx += 1
-        print(belief_map, '\n')
+    def print_belief(self, beliefs):
+        beliefs_prob = beliefs[1]
+        for i, probs in enumerate(beliefs_prob):
+            if i == self.label:
+                continue
+            idx = 0
+            belief_map = np.zeros(shape=self.layout.shape)
+            for r in range(len(self.layout)):
+                for c in range(len(self.layout[0])):
+                    if self.layout[r, c] == 1 or (r, c) == self.goal:
+                        belief_map[r, c] = np.nan
+                    else:
+                        belief_map[r, c] = np.round(probs[idx], 3)
+                        idx += 1
+            print(f'=== Belief({self.label + 1} -> {i + 1}) ===')
+            print(belief_map)
+        print()

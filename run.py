@@ -98,7 +98,7 @@ if __name__ == '__main__':
     show_args(args)
 
     agents = []
-    agents.append(AStarAgent(0, args.goals[args.agents[0]]))
+    agents.append(MDPAgent(0, args.goals[args.agents[0]], belief_update=True))
     agents.append(MDPAgent(1, args.goals[args.agents[1]], belief_update=True))
     # agents.append(DijkstraAgent(2, args.goals[args.agents[2]]))
 

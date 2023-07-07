@@ -31,4 +31,12 @@ __pycache__/
 commands*
 test*
 
-/*.lp
+*.lp
+
+*.alpha
+
+*.pg
+
+*.POMDP
+
+*##

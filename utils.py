@@ -56,7 +56,7 @@ def enumerate_all(N, layout):
     ncols = len(layout[0])
 
     def idx2row(idx):
-        return idx // nrows
+        return idx // ncols
 
     def idx2col(idx):
         return idx % ncols

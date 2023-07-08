@@ -131,7 +131,7 @@ class MDPAgent(object):
                 for loc in policy:
                     action_dist = [0, 0, 0, 0, 0]
                     action_dist[policy[loc]] = 1
-                    action_dist = soft_max(action_dist)
+                    # action_dist = soft_max(action_dist)
                     policy[loc] = action_dist
                 beliefs_pi[i].append(policy)
                 beliefs_prob[i].append(NORM_PR)
@@ -379,7 +379,7 @@ class POMDPAgent(MDPAgent):
                     if op_id == self.label:
                         continue
                     prob *= beliefs_pi[op_id][pi_id][hash(Oi[op_id])][joint_a[op_id]]
-                T[A, i, j] = prob
+                T[A, i, j] += prob
         # T is conceptually a stochastic matrix already,
         # But due to float ops, we need to further normalize it
         T = T / np.sum(T, axis=2).reshape(5, num_all_s, 1)
@@ -405,10 +405,23 @@ class POMDPAgent(MDPAgent):
                 j_o = Omega.index(Oj)
                 j_s = S.index(Sj)
                 reward = R_mapf(self.label, self.goal, Oi, Oj)
-                R[A, i_s, j_s, j_o] = reward
+
+                # Only cares about the landing state
+                if Oj == 'EDGECONFLICT':
+                    R[A, i_s, j_s, j_o] = reward
+                    continue
+
+                coef = 1
+                for op_id, pi_id in enumerate(joint_idxs):
+                    if op_id == self.label:
+                        continue
+                    coef *= beliefs_pi[op_id][pi_id][hash(Oi[op_id])][joint_a[op_id]]
+                R[A, i_s, j_s, j_o] += coef * reward
 
         pomdp = self.write_pomdp(T, Obs, R)
         policy = self.solve_pomdp(pomdp)
+        exit()
+        return policy
 
     def write_pomdp(self, T, Obs, R, discount=0.95):
         # Write a pomdp file
@@ -455,11 +468,49 @@ class POMDPAgent(MDPAgent):
         pomdp_file.close()
         return pomdp_file_name
 
-    def solve_pomdp(self, pomdp_file_name, h=10):
+    def solve_pomdp(self, pomdp_file_name, h=3):
+        # Solve the pomdp
         solver = './pomdp-solve/pomdp-solve-os-x.bin'
         sol_file_prefix = f'{pomdp_file_name[:-6]}_sol'
         os.system(f'{solver} -horizon {h}'
                   f' -pomdp {pomdp_file_name} -o {sol_file_prefix}')
-        exit()
 
-        # Solve the pomdp and parse the policy graph
+        # Parse the policy graph
+        def str2num(s):
+            if s == '-':
+                return np.nan
+            else:
+                return eval(s)
+
+        alpha = open(f'{sol_file_prefix}.alpha', 'r')
+        node2action = []
+        node2action_value_mat = []
+        line = alpha.readline()
+        while line:
+            tokens = line.split()
+            if len(tokens) == 0:
+                line = alpha.readline()
+                continue
+            else:
+                node2action.append(eval(tokens[0]))
+                line = alpha.readline()
+                values = list(map(str2num, line.split()))
+                node2action_value_mat.append(values)
+                line = alpha.readline()
+
+        pg = open(f'{sol_file_prefix}.pg', 'r')
+        obs2node_mat = []
+        line = pg.readline()
+        while line:
+            tokens = line.split()
+            if len(tokens) == 0:
+                line = pg.readline()
+                continue
+            else:
+                obs2node = list(map(str2num, tokens[2:]))
+                obs2node_mat.append(obs2node)
+                line = pg.readline()
+
+        return (np.array(node2action),
+                np.array(node2action_value_mat),
+                np.array(obs2node_mat))

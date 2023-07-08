@@ -298,7 +298,7 @@ POMDP agent:
 class POMDPAgent(MDPAgent):
     """docstring for POMDPAgent"""
 
-    def __init__(self, label, goal, belief_update=False):
+    def __init__(self, label, goal, belief_update=True):
         super(POMDPAgent, self).__init__(label, goal, belief_update)
 
     def act(self, state):
@@ -321,8 +321,25 @@ class POMDPAgent(MDPAgent):
             self.policy = self.translate_solve()
 
         self.print_belief(self.beliefs)
-        Si = self.S.index(locations)
-        action = self.policy[Si]
+
+        # policy (a finite state automaton) execution
+        node2action, node2action_value_mat, obs2node_mat = self.policy
+        _, beliefs_prob = self.beliefs
+        state_dist = []
+        for Si in self.S:
+            _, joint_idxs = Si
+            prob = 1
+            for op_id, pi_id in enumerate(joint_idxs):
+                if op_id == self.label:
+                    continue
+                prob *= beliefs_prob[op_id][pi_id]
+            state_dist.append(prob)
+        # Normalization due float op issues
+        state_dist = state_dist / np.sum(state_dist)
+        node_values = node2action_value_mat @ state_dist
+        node = np.argmax(node_values)
+        action = node2action[node]
+
         self.prev_locations = locations
         return action
 
@@ -420,7 +437,6 @@ class POMDPAgent(MDPAgent):
 
         pomdp = self.write_pomdp(T, Obs, R)
         policy = self.solve_pomdp(pomdp)
-        exit()
         return policy
 
     def write_pomdp(self, T, Obs, R, discount=0.95):

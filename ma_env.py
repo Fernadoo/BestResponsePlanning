@@ -40,7 +40,7 @@ class MAPF(object):
         succ_locations = []
         for i in range(N):
             if action_profile[i] not in avai_actions[i]:
-                raise RuntimeError("Action not allowed!")
+                raise RuntimeError(f"Action {action_profile[i]} not allowed in {locations}!")
             succ_loc = move(locations[i], action_profile[i])
             succ_locations.append(succ_loc)
 

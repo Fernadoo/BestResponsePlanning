@@ -77,6 +77,20 @@ def R_mapf(label, goal, pred_locs, succ_locs):
     return -1
 
 
+def get_avai_actions_mapf(loc, layout):
+    nrows = len(layout)
+    ncols = len(layout[0])
+    avai_actions = []
+    for a in range(5):
+        succ_loc = move(loc, a)
+        if layout[succ_loc] == 1 or\
+                succ_loc[0] not in range(1, nrows + 1) or\
+                succ_loc[1] not in range(1, ncols + 1):
+            continue
+        avai_actions.append(a)
+    return avai_actions
+
+
 """
 MDP agent:
 [Assuming the belief will NOT change in the futher]
@@ -155,7 +169,8 @@ class MDPAgent(object):
                     Pi_i[j][hash(prev_locs[i])][prev_actions[i]]
                     * beliefs_prob[i][j]
                 )
-            # soft-update
+            # Soft-update
+            # since some action may not be included in any support policy
             new_probs += 0.01
             new_beliefs_prob[i] = new_probs / np.sum(new_probs)
 
@@ -298,8 +313,9 @@ POMDP agent:
 class POMDPAgent(MDPAgent):
     """docstring for POMDPAgent"""
 
-    def __init__(self, label, goal, belief_update=True):
+    def __init__(self, label, goal, belief_update=True, exist_policy=False):
         super(POMDPAgent, self).__init__(label, goal, belief_update)
+        self.exist_policy = exist_policy
 
     def act(self, state):
         N, prev_actions, locations, layout = state
@@ -318,7 +334,9 @@ class POMDPAgent(MDPAgent):
         # Alt2: Update the belief and replan
         if prev_actions is not None and self.belief_update:
             self.beliefs = self.update_belief(prev_actions)
-            self.policy = self.translate_solve()
+            # No need for a new pomdp policy
+            # since it is already a mapping from beliefs to actions
+            # self.policy = self.translate_solve()
 
         self.print_belief(self.beliefs)
 
@@ -327,7 +345,11 @@ class POMDPAgent(MDPAgent):
         _, beliefs_prob = self.beliefs
         state_dist = []
         for Si in self.S:
-            _, joint_idxs = Si
+            Oi, joint_idxs = Si
+            # TODO: handle edge conflict explicitly?
+            if Oi != locations:
+                state_dist.append(0)
+                continue
             prob = 1
             for op_id, pi_id in enumerate(joint_idxs):
                 if op_id == self.label:
@@ -337,8 +359,10 @@ class POMDPAgent(MDPAgent):
         # Normalization due float op issues
         state_dist = state_dist / np.sum(state_dist)
         node_values = node2action_value_mat @ state_dist
-        node = np.argmax(node_values)
-        action = node2action[node]
+        best_node = np.argmax(node_values)
+        action = node2action[best_node]
+        if action not in get_avai_actions_mapf(locations[self.label], self.layout):
+            action = 0
 
         self.prev_locations = locations
         return action
@@ -369,6 +393,11 @@ class POMDPAgent(MDPAgent):
                     state = (obs, joint_idxs)
                     self.S.append(state)
             self.num_all_s = len(self.S)
+
+        if self.exist_policy:
+            pomdp = self.write_pomdp(None, None, None)
+            policy = self.solve_pomdp(pomdp)
+            return policy
 
         Omega = self.Omega
         num_all_obs = self.num_all_obs
@@ -442,6 +471,8 @@ class POMDPAgent(MDPAgent):
     def write_pomdp(self, T, Obs, R, discount=0.95):
         # Write a pomdp file
         pomdp_file_name = f'pomdp-solve/problems/{self.label}.POMDP'
+        if self.exist_policy:
+            return pomdp_file_name
         pomdp_file = open(pomdp_file_name, 'w')
 
         # initial belief state
@@ -485,11 +516,12 @@ class POMDPAgent(MDPAgent):
         return pomdp_file_name
 
     def solve_pomdp(self, pomdp_file_name, h=3):
-        # Solve the pomdp
-        solver = './pomdp-solve/pomdp-solve-os-x.bin'
         sol_file_prefix = f'{pomdp_file_name[:-6]}_sol'
-        os.system(f'{solver} -horizon {h}'
-                  f' -pomdp {pomdp_file_name} -o {sol_file_prefix}')
+        if not self.exist_policy:
+            # Solve the pomdp
+            solver = './pomdp-solve/pomdp-solve-os-x.bin'
+            os.system(f'{solver} -horizon {h} -inc_prune restricted_region '
+                      f' -pomdp {pomdp_file_name} -o {sol_file_prefix}')
 
         # Parse the policy graph
         def str2num(s):

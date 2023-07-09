@@ -99,7 +99,8 @@ if __name__ == '__main__':
 
     agents = []
     agents.append(AStarAgent(0, args.goals[args.agents[0]]))
-    agents.append(POMDPAgent(1, args.goals[args.agents[1]]))
+    agents.append(POMDPAgent(1, args.goals[args.agents[1]], exist_policy=True))
+    # agents.append(MDPAgent(1, args.goals[args.agents[1]]))
     # agents.append(DijkstraAgent(2, args.goals[args.agents[2]]))
 
     game = MAPF(agents,

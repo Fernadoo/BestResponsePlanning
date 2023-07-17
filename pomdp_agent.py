@@ -1,6 +1,7 @@
 from mdp_agent import T_mapf, R_mapf, get_avai_actions_mapf, MDPAgent
 from search_agent import dijkstra
-from utils import move, hash, soft_max, enumerate_all
+from utils import (move, hash, soft_max, enumerate_all,
+                   T_mapf, R_mapf, get_avai_actions_mapf)
 
 import os
 from collections import namedtuple

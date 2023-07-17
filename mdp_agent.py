@@ -1,5 +1,6 @@
 from search_agent import dijkstra
-from utils import move, hash, soft_max, enumerate_all
+from utils import (move, hash, soft_max, enumerate_all,
+                   T_mapf, R_mapf, get_avai_actions_mapf)
 
 import os
 from collections import namedtuple
@@ -8,92 +9,6 @@ from copy import deepcopy
 
 import numpy as np
 from mdptoolbox import mdp
-
-
-"""
-MAPF transition & reward for sing-agent MDP formulation
-"""
-
-
-def T_mapf(label, goal, layout, locations, action_profile):
-    """
-    The multi-agent env transition:
-    given a tuple of locations and an action profile,
-    returns the successor locations.
-    """
-    # If edge conflict, no valid transition
-    if locations == 'EDGECONFLICT':
-        return 'EDGECONFLICT'
-
-    # If goal, no valid transition
-    if locations[label] == goal:
-        return tuple(locations)
-
-    # If vertex conflict, no valid transition
-    for i, other_loc in enumerate(locations):
-        if i != label and other_loc == locations[label]:
-            return tuple(locations)
-
-    nrows = len(layout)
-    ncols = len(layout[0])
-    succ_locations = []
-    for i in range(len(locations)):
-        succ_loc = move(locations[i], action_profile[i])
-        if layout[succ_loc] == 1 or\
-                succ_loc[0] not in range(1, nrows + 1) or\
-                succ_loc[1] not in range(1, ncols + 1):
-            # Go into walls -> bounce back
-            succ_locations.append(locations[i])
-        else:
-            succ_locations.append(succ_loc)
-
-    # If adjacent swap, mark as edge conflict
-    for i, other_loc in enumerate(succ_locations):
-        if i != label:
-            if other_loc == locations[label] and\
-                    succ_locations[label] == locations[i]:
-                return 'EDGECONFLICT'
-
-    return tuple(succ_locations)
-
-
-def R_mapf(label, goal, pred_locs, succ_locs):
-    """
-    The multi-agent env reward for this pivotal agent:
-    given the prev and succ locations,
-    returns the reward.
-    """
-    # Edge conflict
-    if succ_locs == 'EDGECONFLICT':
-        return -1000
-
-    # Vertex conflict
-    for i, other_loc in enumerate(succ_locs):
-        if i != label and other_loc == succ_locs[label]:
-            return -1000
-
-    if succ_locs[label] == goal:
-        return 1000
-    return -1
-
-
-def get_avai_actions_mapf(loc, layout):
-    nrows = len(layout)
-    ncols = len(layout[0])
-    avai_actions = []
-    for a in range(5):
-        succ_loc = move(loc, a)
-        if layout[succ_loc] == 1 or\
-                succ_loc[0] not in range(1, nrows + 1) or\
-                succ_loc[1] not in range(1, ncols + 1):
-            continue
-        avai_actions.append(a)
-    return avai_actions
-
-
-"""
-MDP agent
-"""
 
 
 class MDPAgent(object):

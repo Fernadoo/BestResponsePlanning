@@ -1,17 +1,9 @@
-from utils import move, rev_action, hash
+from utils import move, rev_action, hash, euc_dist
 
 from queue import PriorityQueue
 from collections import namedtuple
 
 import numpy as np
-
-
-def euc_dist(loc, dest):
-    return np.sqrt(np.sum(np.square(np.array(loc) - np.array(dest))))
-
-
-def man_dist(loc, dest):
-    return np.sum(np.abs(np.array(loc) - np.array(dest)))
 
 
 """

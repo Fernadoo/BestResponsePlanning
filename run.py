@@ -1,5 +1,6 @@
 from search_agent import AStarAgent, DijkstraAgent
-from pomdp_agent import MDPAgent, POMDPAgent
+from mdp_agent import MDPAgent
+from pomdp_agent import POMDPAgent, QMDPAgent
 from ma_env import MAPF
 from animator import Animation
 
@@ -100,7 +101,8 @@ if __name__ == '__main__':
     agents = []
     agents.append(AStarAgent(0, args.goals[args.agents[0]]))
     # agents.append(POMDPAgent(1, args.goals[args.agents[1]], exist_policy=True))
-    agents.append(MDPAgent(1, args.goals[args.agents[1]], belief_update=False))
+    # agents.append(MDPAgent(1, args.goals[args.agents[1]], belief_update=True))
+    agents.append(QMDPAgent(1, args.goals[args.agents[1]]))
     # agents.append(DijkstraAgent(2, args.goals[args.agents[2]]))
 
     game = MAPF(agents,

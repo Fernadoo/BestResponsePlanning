@@ -1,6 +1,6 @@
 from naive_agent import SafeAgent, RandomAgent
 from search_agent import AStarAgent, DijkstraAgent
-from mdp_agent import MDPAgent
+from mdp_agent import MDPAgent, HistoryMDPAgent
 from pomdp_agent import POMDPAgent, QMDPAgent
 from ma_env import MAPF
 from animator import Animation
@@ -100,14 +100,16 @@ if __name__ == '__main__':
     show_args(args)
 
     agents = []
-    # agents.append(AStarAgent(0, args.goals[args.agents[0]]))
+    agents.append(AStarAgent(0, args.goals[args.agents[0]]))
     # agents.append(SafeAgent(0, args.goals[args.agents[0]]))
-    agents.append(RandomAgent(0, args.goals[args.agents[0]]))
+    # agents.append(RandomAgent(0, args.goals[args.agents[0]]))
+    # agents.append(DijkstraAgent(0, args.goals[args.agents[0]]))
 
-    agents.append(SafeAgent(1, args.goals[args.agents[1]]))
+    # agents.append(SafeAgent(1, args.goals[args.agents[1]]))
     # agents.append(POMDPAgent(1, args.goals[args.agents[1]], exist_policy=True))
     # agents.append(MDPAgent(1, args.goals[args.agents[1]], belief_update=True))
     # agents.append(QMDPAgent(1, args.goals[args.agents[1]]))
+    agents.append(HistoryMDPAgent(1, args.goals[args.agents[1]], horizon=3))
 
     # agents.append(DijkstraAgent(2, args.goals[args.agents[2]]))
 

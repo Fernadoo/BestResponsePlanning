@@ -90,6 +90,10 @@ def man_dist(loc, dest):
     return np.sum(np.abs(np.array(loc) - np.array(dest)))
 
 
+def MSE(src, dest):
+    return np.mean(np.square(np.array(src) - np.array(dest)))
+
+
 """
 MAPF transition & reward for sing-agent MDP formulation
 """

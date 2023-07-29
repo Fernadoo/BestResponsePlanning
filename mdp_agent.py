@@ -1,11 +1,12 @@
 from search_agent import dijkstra
-from utils import (move, hash, soft_max, enumerate_all,
+from utils import (move, hash, soft_max, enumerate_all, MSE,
                    T_mapf, R_mapf, get_avai_actions_mapf)
 
 import os
 from collections import namedtuple
 from itertools import product
 from copy import deepcopy
+import time
 
 import numpy as np
 from mdptoolbox import mdp
@@ -70,10 +71,10 @@ class MDPAgent(object):
 
         return beliefs_pi, beliefs_prob
 
-    def update_belief(self, prev_actions):
-        beliefs_pi, beliefs_prob = self.beliefs
+    def update_belief(self, beliefs, prev_locs, prev_actions):
+        beliefs_pi, beliefs_prob = beliefs
         new_beliefs_prob = deepcopy(beliefs_prob)
-        prev_locs = self.prev_locations
+        # prev_locs = self.prev_locations
 
         # Bayesian update:
         # B_pi_i^j \prop pi_i^j[Si][ai] * pi_i^j
@@ -188,7 +189,7 @@ class MDPAgent(object):
 
         # Alt2: Update the belief and replan
         if prev_actions is not None and self.belief_update:
-            self.beliefs = self.update_belief(prev_actions)
+            self.beliefs = self.update_belief(self.beliefs, self.prev_locations, prev_actions)
             self.policy = self.translate_solve()
 
         self.print_belief(self.beliefs)
@@ -214,3 +215,157 @@ class MDPAgent(object):
             print(f'=== Belief({self.label + 1} -> {i + 1}) ===')
             print(belief_map)
         print()
+
+
+class HistoryMDPAgent(MDPAgent):
+    """
+    History-MDP Agent:
+    [Coupling belief revision into transition modelling]
+    State := (Loc-tuple, History)
+    History := [(Loc-tuple, joint_a), ...]
+    BeliefRvision: B x H -> B
+    T[S2=(s2,h2) | S1=(s1,h1), a] := T_{env}[s2 | s1, a] [+] BeliefRevision(b, h1)
+    """
+
+    def __init__(self, label, goal, belief_update=True, horizon=3, err=1e-2):
+        super(HistoryMDPAgent, self).__init__(label, goal, belief_update)
+        self.horizon = horizon
+        self.err = err
+
+    def act(self, state):
+        t1 = time.time()
+        N, prev_actions, locations, layout = state
+        if self.beliefs is None:
+            self.beliefs = self.init_belief(N, layout)
+            self.layout = layout
+            self.num_agents = N
+        if locations[self.label] == self.goal:
+            return 0
+
+        # Formulate a history-MDP based on the belief
+        if self.policy is None:
+            self.policy = self.translate_solve(locations)
+
+        # Update the belief and replan
+        if prev_actions is not None and self.belief_update:
+            self.beliefs = self.update_belief(self.beliefs, self.prev_locations, prev_actions)
+            self.policy = self.translate_solve(locations)
+
+        self.print_belief(self.beliefs)
+
+        curr_h_state = (locations, [])
+        action = np.argmax(self.policy[hash(curr_h_state)])
+        if action not in get_avai_actions_mapf(locations[self.label], self.layout):
+            action = 0
+        t2 = time.time()
+        print(action, f'took {t2-t1}s')
+        self.prev_locations = locations
+        return action
+
+    def translate_solve(self, curr_locs):
+        """
+        Formulate a history-MDP from the pivotal agent's perspective,
+        with initial h_state as (curr_locs, []),
+        and do value iteration for finite times or until the error is small enough
+        """
+        if getattr(self, 'beliefs', None) is None or\
+                getattr(self, 'layout', None) is None:
+            raise RuntimeError("Get invalid beliefs, "
+                               "or invalid layout!")
+
+        # Get all possible states
+        if getattr(self, 'S', None) is None:
+            self.S = enumerate_all(self.num_agents, self.layout)
+            self.S.append('EDGECONFLICT')
+            self.num_all = len(self.S)
+
+        init_h_state = (curr_locs, [])
+        h_states = [init_h_state]
+        h_qvalues = {hash(init_h_state): np.zeros(5)}
+        it = 0
+        mse = np.inf
+        while it < self.horizon or mse < self.err:
+            h_states, h_qvalues = self.value_iteration(h_states, h_qvalues)
+            it += 1
+
+        return h_qvalues
+
+    def value_iteration(self, h_states, h_qvalues, gamma=0.9):
+        new_h_states = deepcopy(h_states)
+        new_h_qvalues = deepcopy(h_qvalues)
+        beliefs_pi, beliefs_prob = self.beliefs
+        beliefs_num = list(map(lambda Pi_i: range(len(Pi_i)), beliefs_pi))
+        beliefs_num[self.label] = range(1)
+
+        # Bellman optimality backup
+        # Q(s,a) = \sum_{s'} T(s'|s,a) [R(s, a, s') + \gamma \max Q(s',a)]
+        for hs in h_qvalues:
+        # for i in range(len(h_states) - 1, -1, -1):  # reversed traverse
+        #     hs = hash(h_states[i])
+            locs, h = eval(hs)
+            _, beliefs_prob = self.belief_revision(self.beliefs, h)
+
+            for a in range(5):
+                T_a = []
+                R_a = []
+                succ_hs = []
+
+                if locs == 'EDGECONFLICT':
+                    succ_locs = T_mapf(self.label, self.goal, self.layout, locs, None)
+                    reward = R_mapf(self.label, self.goal, locs, succ_locs)
+                    T_a.append(1)
+                    R_a.append(reward)
+                    succ_hs.append((succ_locs, 'EOH'))  # End of history
+
+                else:
+                    for other_joint_a in product(range(5), repeat=self.num_agents - 1):
+                        joint_a = list(other_joint_a)
+                        joint_a.insert(self.label, a)
+
+                        succ_locs = T_mapf(self.label, self.goal, self.layout, locs, joint_a)
+                        reward = R_mapf(self.label, self.goal, locs, succ_locs)
+
+                        prob = 0
+                        r = 0
+                        for joint_Pi in product(*beliefs_num):
+                            coef = 1
+                            for op_id, pi_id in enumerate(joint_Pi):
+                                if op_id == self.label:
+                                    continue
+                                coef *= (
+                                    beliefs_pi[op_id][pi_id][hash(locs[op_id])][joint_a[op_id]]
+                                    * beliefs_prob[op_id][pi_id]
+                                )
+                            prob += coef
+                            r += coef * reward
+
+                        T_a.append(prob)
+                        R_a.append(r)
+
+                        succ_h = deepcopy(h)
+                        succ_h.append((locs, joint_a))
+                        succ_hs.append((succ_locs, succ_h))
+
+                # Normalize transitions
+                T_a = T_a / np.sum(T_a)
+
+                # Bellman backup over growing states
+                new_h_qvalues[hs][a] = 0
+                for j, sj in enumerate(succ_hs):
+                    next_V = 0
+                    if hash(sj) not in h_qvalues:
+                        new_h_qvalues[hash(sj)] = np.zeros(5)
+                        # new_h_states.append(sj)  # create new h_state
+                    else:
+                        next_V = np.max(h_qvalues[hash(sj)])
+                        # next_V = np.max(new_h_qvalues[hash(sj)])  # In-place update
+                    new_h_qvalues[hs][a] += T_a[j] * (R_a[j] + gamma * next_V)
+
+        return new_h_states, new_h_qvalues
+
+    def belief_revision(self, beliefs, history):
+        if history == 'EOH':
+            return None, None
+        for prev_locs, prev_actions in history:
+            beliefs = self.update_belief(beliefs, prev_locs, prev_actions)
+        return beliefs

@@ -45,7 +45,7 @@ class POMDPAgent(MDPAgent):
 
         # Second iteration onwards
         if prev_actions is not None and self.belief_update:
-            self.beliefs = self.update_belief(prev_actions)
+            self.beliefs = self.update_belief(self.beliefs, self.prev_locations, prev_actions)
             # No need for a new pomdp policy
             # since it is already a mapping from beliefs to actions
             # self.policy = self.translate_solve()
@@ -276,7 +276,7 @@ class POMDPAgent(MDPAgent):
                 np.array(obs2node_mat))
 
 
-class QMDPAgent(POMDPAgent):
+class QMDPAgent(MDPAgent):
     """
     QMDP agent:
     [An approximation for POMDP agent]
@@ -306,7 +306,7 @@ class QMDPAgent(POMDPAgent):
         # Update the belief and mix the MDP policy,
         # No need for replanning
         if prev_actions is not None and self.belief_update:
-            self.beliefs = self.update_belief(prev_actions)
+            self.beliefs = self.update_belief(self.beliefs, self.prev_locations, prev_actions)
 
         self.print_belief(self.beliefs)
 
@@ -327,8 +327,11 @@ class QMDPAgent(POMDPAgent):
         mixed_Q = probs @ Qs
         action = np.argmax(mixed_Q)
 
-        # if action not in get_avai_actions_mapf(locations[self.label], self.layout):
-        #     action = 0
+        # Since knocking into walls will get bounced back
+        # then Q(S, stop) = Q(S, knock into walls)
+        # But due to float ops, possibly `=` will be `<`
+        if action not in get_avai_actions_mapf(locations[self.label], self.layout):
+            action = 0
 
         self.prev_locations = locations
         return action

@@ -299,9 +299,8 @@ class HistoryMDPAgent(MDPAgent):
 
         # Bellman optimality backup
         # Q(s,a) = \sum_{s'} T(s'|s,a) [R(s, a, s') + \gamma \max Q(s',a)]
-        for hs in h_qvalues:
-        # for i in range(len(h_states) - 1, -1, -1):  # reversed traverse
-        #     hs = hash(h_states[i])
+        for i in range(len(h_states) - 1, -1, -1):  # reversed traverse
+            hs = hash(h_states[i])
             locs, h = eval(hs)
             _, beliefs_prob = self.belief_revision(self.beliefs, h)
 
@@ -355,10 +354,9 @@ class HistoryMDPAgent(MDPAgent):
                     next_V = 0
                     if hash(sj) not in h_qvalues:
                         new_h_qvalues[hash(sj)] = np.zeros(5)
-                        # new_h_states.append(sj)  # create new h_state
+                        new_h_states.append(sj)  # create new h_state
                     else:
-                        next_V = np.max(h_qvalues[hash(sj)])
-                        # next_V = np.max(new_h_qvalues[hash(sj)])  # In-place update
+                        next_V = np.max(new_h_qvalues[hash(sj)])  # In-place update
                     new_h_qvalues[hs][a] += T_a[j] * (R_a[j] + gamma * next_V)
 
         return new_h_states, new_h_qvalues

@@ -109,7 +109,7 @@ if __name__ == '__main__':
     # agents.append(POMDPAgent(1, args.goals[args.agents[1]], exist_policy=True))
     # agents.append(MDPAgent(1, args.goals[args.agents[1]], belief_update=True))
     # agents.append(QMDPAgent(1, args.goals[args.agents[1]]))
-    agents.append(HistoryMDPAgent(1, args.goals[args.agents[1]], horizon=3))
+    agents.append(HistoryMDPAgent(1, args.goals[args.agents[1]], horizon=4))
 
     # agents.append(DijkstraAgent(2, args.goals[args.agents[2]]))
 

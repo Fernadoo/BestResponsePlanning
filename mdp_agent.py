@@ -7,6 +7,7 @@ from collections import namedtuple
 from itertools import product
 from copy import deepcopy
 import time
+import pickle
 
 import numpy as np
 from mdptoolbox import mdp
@@ -71,7 +72,7 @@ class MDPAgent(object):
 
         return beliefs_pi, beliefs_prob
 
-    def update_belief(self, beliefs, prev_locs, prev_actions):
+    def update_belief(self, beliefs, prev_locs, prev_actions, soft=1e-2):
         beliefs_pi, beliefs_prob = beliefs
         new_beliefs_prob = deepcopy(beliefs_prob)
         # prev_locs = self.prev_locations
@@ -87,9 +88,10 @@ class MDPAgent(object):
                     Pi_i[j][hash(prev_locs[i])][prev_actions[i]]
                     * beliefs_prob[i][j]
                 )
+
             # Soft-update
             # since some action may not be included in any support policy
-            new_probs += 0.01
+            new_probs += soft
             new_beliefs_prob[i] = new_probs / np.sum(new_probs)
 
         return beliefs_pi, new_beliefs_prob
@@ -171,6 +173,11 @@ class MDPAgent(object):
 
         VI = mdp.ValueIteration(T, R, discount=0.9)
         VI.run()
+        # For theory proving
+        with open('mdp_values.pkl', 'wb') as pklf:
+            pickle.dump((self.label, self.goal, self.layout,
+                         S, VI.V, VI.policy),
+                        pklf)
         return VI.policy
 
     def act(self, state):
@@ -248,7 +255,7 @@ class HistoryMDPAgent(MDPAgent):
 
         # Update the belief and replan
         if prev_actions is not None and self.belief_update:
-            self.beliefs = self.update_belief(self.beliefs, self.prev_locations, prev_actions)
+            self.beliefs = self.update_belief(self.beliefs, self.prev_locations, prev_actions, soft=1e-10)
             self.policy = self.translate_solve(locations)
 
         self.print_belief(self.beliefs)
@@ -365,5 +372,5 @@ class HistoryMDPAgent(MDPAgent):
         if history == 'EOH':
             return None, None
         for prev_locs, prev_actions in history:
-            beliefs = self.update_belief(beliefs, prev_locs, prev_actions)
+            beliefs = self.update_belief(beliefs, prev_locs, prev_actions, soft=1e-10)
         return beliefs

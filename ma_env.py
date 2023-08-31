@@ -2,6 +2,7 @@ from utils import move
 
 from itertools import product
 from collections import namedtuple
+from copy import deepcopy
 
 import numpy as np
 
@@ -93,5 +94,5 @@ class MAPF(object):
             for i in range(self.N):
                 action_profile.append(self.agents[i].act(self.state))
             _, action_profile, locations, _ = self.transit(action_profile)
-            history.append((action_profile, locations))
+            history.append((deepcopy(action_profile), locations))
         return history

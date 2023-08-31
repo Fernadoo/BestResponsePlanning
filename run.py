@@ -2,6 +2,7 @@ from naive_agent import SafeAgent, RandomAgent
 from search_agent import AStarAgent, DijkstraAgent
 from mdp_agent import MDPAgent, HistoryMDPAgent
 from pomdp_agent import POMDPAgent, QMDPAgent
+from ts_agent import UniformTreeSearchAgent
 from ma_env import MAPF
 from animator import Animation
 
@@ -109,7 +110,8 @@ if __name__ == '__main__':
     # agents.append(POMDPAgent(1, args.goals[args.agents[1]], exist_policy=True))
     # agents.append(MDPAgent(1, args.goals[args.agents[1]], belief_update=False))
     # agents.append(QMDPAgent(1, args.goals[args.agents[1]]))
-    agents.append(HistoryMDPAgent(1, args.goals[args.agents[1]], horizon=5))
+    # agents.append(HistoryMDPAgent(1, args.goals[args.agents[1]], horizon=5))
+    agents.append(UniformTreeSearchAgent(1, args.goals[args.agents[1]], belief_update=True, depth=2))
 
     # agents.append(DijkstraAgent(2, args.goals[args.agents[2]]))
 

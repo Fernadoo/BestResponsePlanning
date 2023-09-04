@@ -18,15 +18,17 @@ class TreeNode(object):
         locations: location tuple
         beliefs: only MAX nodes are with valid beliefs
         val: backpropagated long run return
+        reward: immediate reward from the parent node and the branch action
     """
 
-    def __init__(self, tp, h, locations, beliefs=None, prev_actions=None):
+    def __init__(self, tp, h, locations, reward, beliefs=None, prev_actions=None):
         if tp not in ['MAX', 'EXP']:
             raise ValueError('No such node type!')
         self.type = tp
         self.height = h
         self.locations = locations
         self.val = None
+        self.reward = reward
         self.children = []
         self.beliefs = beliefs
         self.prev_actions = prev_actions
@@ -35,11 +37,13 @@ class TreeNode(object):
 class UniformTreeSearchAgent(MDPAgent):
     """docstring for UniformTreeSearchAgent"""
 
-    def __init__(self, label, goal, belief_update=True, depth=2, discount=0.9):
+    def __init__(self, label, goal,
+                 belief_update=True, depth=2, long_run_eval=True, discount=0.9):
         super(UniformTreeSearchAgent, self).__init__(label, goal, belief_update)
 
         # limited depth for expansion, -1 means to expand until termination
         self.depth = depth
+        self.long_run_eval = long_run_eval
         self.discount = discount
 
     def act(self, state):
@@ -78,7 +82,7 @@ class UniformTreeSearchAgent(MDPAgent):
 
     def tree_search(self, curr_locs, prev_actions=None):
         if getattr(self, 'root', None) is None:
-            self.root = TreeNode('MAX', 0, curr_locs, self.beliefs)
+            self.root = TreeNode('MAX', 0, curr_locs, 0, self.beliefs)
             self.self_br = tuple(range(5))
             self.oppo_br = tuple(product(range(5), repeat=self.num_agents - 1))
         else:
@@ -131,6 +135,7 @@ class UniformTreeSearchAgent(MDPAgent):
                 for a in fanout:
                     succ_node = TreeNode('EXP', curr_node.height + 1,
                                          locations=curr_node.locations,
+                                         reward=curr_node.reward,
                                          beliefs=curr_node.beliefs,
                                          prev_actions=a)
                     successors.append(succ_node)
@@ -151,8 +156,10 @@ class UniformTreeSearchAgent(MDPAgent):
                         succ_beliefs = curr_node.beliefs
                     succ_locs = T_mapf(self.label, self.goal, self.layout,
                                        curr_node.locations, prev_joint_a)
+                    rwd = R_mapf(self.label, self.goal, curr_node.locations, succ_locs)
                     succ_node = TreeNode('MAX', curr_node.height + 1,
                                          locations=succ_locs,
+                                         reward=rwd,
                                          beliefs=succ_beliefs,
                                          prev_actions=prev_joint_a)
                     successors.append(succ_node)
@@ -164,12 +171,23 @@ class UniformTreeSearchAgent(MDPAgent):
 
     def evaluate(self, node_to_eval):
         """
+        Return immediate reward or,
         Construct an fix-belief MDP for node evaluation
         """
         if getattr(self, 'beliefs', None) is None or\
                 getattr(self, 'layout', None) is None:
             raise RuntimeError("Get invalid beliefs, "
                                "or invalid layout!")
+
+        beliefs_pi, beliefs_prob = node_to_eval.beliefs
+        beliefs_num = list(map(lambda Pi_i: range(len(Pi_i)), beliefs_pi))
+        beliefs_num[self.label] = range(1)
+
+        self.beliefs_num = beliefs_num  # for later reuse
+
+        if not self.long_run_eval:
+            node_to_eval.val = node_to_eval.reward
+            return
 
         # Get all possible states
         if getattr(self, 'S', None) is None:
@@ -179,11 +197,6 @@ class UniformTreeSearchAgent(MDPAgent):
 
         S = self.S
         num_all = self.num_all
-        beliefs_pi, beliefs_prob = node_to_eval.beliefs
-        beliefs_num = list(map(lambda Pi_i: range(len(Pi_i)), beliefs_pi))
-        beliefs_num[self.label] = range(1)
-
-        self.beliefs_num = beliefs_num  # for later reuse
 
         # Translate transition matrix shape(T) := (A,S,S)
         T = np.zeros(shape=(5, num_all, num_all))
@@ -273,7 +286,7 @@ class UniformTreeSearchAgent(MDPAgent):
                         )
                     probs[idx] += sub_prob
 
-                rewards[idx] = R_mapf(self.label, self.goal, node.locations, child.locations)
+                rewards[idx] = child.reward
 
             probs = probs / np.sum(probs)
             node.val = np.dot(child_values + rewards, probs) * self.discount

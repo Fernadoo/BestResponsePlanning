@@ -141,7 +141,7 @@ def T_mapf(label, goal, layout, locations, action_profile):
     return tuple(succ_locations)
 
 
-def R_mapf(label, goal, pred_locs, succ_locs):
+def R_mapf(label, goal, pred_locs, succ_locs, penalty=1000):
     """
     The multi-agent env reward for this pivotal agent:
     given the prev and succ locations,
@@ -149,12 +149,12 @@ def R_mapf(label, goal, pred_locs, succ_locs):
     """
     # Edge conflict
     if succ_locs == 'EDGECONFLICT':
-        return -1000
+        return -penalty
 
     # Vertex conflict
     for i, other_loc in enumerate(succ_locs):
         if i != label and other_loc == succ_locs[label]:
-            return -1000
+            return -penalty
 
     if succ_locs[label] == goal:
         return 1000

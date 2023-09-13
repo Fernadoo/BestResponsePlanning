@@ -73,6 +73,7 @@ class UniformTreeSearchAgent(MDPAgent):
 
         # Enquire the policy
         action_values = list(map(lambda c: c.val, self.policy.children))
+        print(action_values)
         action = np.argmax(action_values)
         if action not in get_avai_actions_mapf(locations[self.label], self.layout):
             action = 0
@@ -156,7 +157,7 @@ class UniformTreeSearchAgent(MDPAgent):
                         succ_beliefs = curr_node.beliefs
                     succ_locs = T_mapf(self.label, self.goal, self.layout,
                                        curr_node.locations, prev_joint_a)
-                    rwd = R_mapf(self.label, self.goal, curr_node.locations, succ_locs)
+                    rwd = R_mapf(self.label, self.goal, curr_node.locations, succ_locs, penalty=1e3)
                     succ_node = TreeNode('MAX', curr_node.height + 1,
                                          locations=succ_locs,
                                          reward=rwd,
@@ -233,7 +234,7 @@ class UniformTreeSearchAgent(MDPAgent):
                 Sj = T_mapf(self.label, self.goal, self.layout, Si, actions)
                 j = S.index(Sj)
                 A = actions[self.label]
-                reward = R_mapf(self.label, self.goal, Si, Sj)
+                reward = R_mapf(self.label, self.goal, Si, Sj, penalty=1e3)
 
                 # Only cares about the landing state
                 if Sj == 'EDGECONFLICT':
@@ -289,5 +290,5 @@ class UniformTreeSearchAgent(MDPAgent):
                 rewards[idx] = child.reward
 
             probs = probs / np.sum(probs)
-            node.val = np.dot(child_values + rewards, probs) * self.discount
+            node.val = np.dot(np.array(child_values) * self.discount + rewards, probs)
             return node.val

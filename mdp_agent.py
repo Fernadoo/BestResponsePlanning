@@ -153,7 +153,7 @@ class MDPAgent(object):
                 Sj = T_mapf(self.label, self.goal, self.layout, Si, actions)
                 j = S.index(Sj)
                 A = actions[self.label]
-                reward = R_mapf(self.label, self.goal, Si, Sj)
+                reward = R_mapf(self.label, self.goal, Si, Sj, penalty=1e3)
 
                 # Only cares about the landing state
                 if Sj == 'EDGECONFLICT':

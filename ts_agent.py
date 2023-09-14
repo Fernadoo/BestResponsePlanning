@@ -1,6 +1,8 @@
 from mdp_agent import MDPAgent
-from utils import T_mapf, R_mapf, enumerate_all, get_avai_actions_mapf, hash
+from utils import (T_mapf, R_mapf, get_avai_actions_mapf,
+                   hash, man_dist, enumerate_all)
 
+from copy import deepcopy
 from itertools import product
 from queue import Queue
 
@@ -21,7 +23,7 @@ class TreeNode(object):
         reward: immediate reward from the parent node and the branch action
     """
 
-    def __init__(self, tp, h, locations, reward, beliefs=None, prev_actions=None):
+    def __init__(self, tp, h, locations, reward, beliefs=None, prev_actions=None, history=[]):
         if tp not in ['MAX', 'EXP']:
             raise ValueError('No such node type!')
         self.type = tp
@@ -32,19 +34,26 @@ class TreeNode(object):
         self.children = []
         self.beliefs = beliefs
         self.prev_actions = prev_actions
+        self.history = history
 
 
 class UniformTreeSearchAgent(MDPAgent):
     """docstring for UniformTreeSearchAgent"""
 
     def __init__(self, label, goal,
-                 belief_update=True, depth=2, long_run_eval=True, discount=0.9):
+                 belief_update=True, depth=2, node_eval='MDP', discount=0.9,
+                 check_repeated_states=False):
         super(UniformTreeSearchAgent, self).__init__(label, goal, belief_update)
 
         # limited depth for expansion, -1 means to expand until termination
         self.depth = depth
-        self.long_run_eval = long_run_eval
+
+        # evaluation mode: 'IMMED', 'MDP', 'HEU'
+        self.node_eval = node_eval
         self.discount = discount
+
+        # whether different eval for repeated states
+        self.check_repeated_states = check_repeated_states
 
     def act(self, state):
         N, prev_actions, locations, layout = state
@@ -138,7 +147,8 @@ class UniformTreeSearchAgent(MDPAgent):
                                          locations=curr_node.locations,
                                          reward=curr_node.reward,
                                          beliefs=curr_node.beliefs,
-                                         prev_actions=a)
+                                         prev_actions=a,
+                                         history=curr_node.history)
                     successors.append(succ_node)
                     q.put(succ_node)
 
@@ -158,11 +168,14 @@ class UniformTreeSearchAgent(MDPAgent):
                     succ_locs = T_mapf(self.label, self.goal, self.layout,
                                        curr_node.locations, prev_joint_a)
                     rwd = R_mapf(self.label, self.goal, curr_node.locations, succ_locs, penalty=1e3)
+                    hist = deepcopy(curr_node.history)
+                    hist.append(curr_node.locations)
                     succ_node = TreeNode('MAX', curr_node.height + 1,
                                          locations=succ_locs,
                                          reward=rwd,
                                          beliefs=succ_beliefs,
-                                         prev_actions=prev_joint_a)
+                                         prev_actions=prev_joint_a,
+                                         history=hist)
                     successors.append(succ_node)
                     q.put(succ_node)
 
@@ -186,8 +199,21 @@ class UniformTreeSearchAgent(MDPAgent):
 
         self.beliefs_num = beliefs_num  # for later reuse
 
-        if not self.long_run_eval:
+        if self.check_repeated_states:
+            if node_to_eval.locations in node_to_eval.history:
+                first_occur = node_to_eval.history.index(node_to_eval.locations)
+                node_to_eval.val = node_to_eval.reward - 10 * (len(node_to_eval.history) - first_occur)
+                return
+
+        if self.node_eval == 'IMMED':
             node_to_eval.val = node_to_eval.reward
+            return
+        if self.node_eval == 'HEU':
+            if node_to_eval.locations == 'EDGECONFLICT':
+                node_to_eval.val = -1000
+                return
+            loc = node_to_eval.locations[self.label]
+            node_to_eval.val = 1000 - man_dist(loc, self.goal)
             return
 
         # Get all possible states
@@ -234,7 +260,7 @@ class UniformTreeSearchAgent(MDPAgent):
                 Sj = T_mapf(self.label, self.goal, self.layout, Si, actions)
                 j = S.index(Sj)
                 A = actions[self.label]
-                reward = R_mapf(self.label, self.goal, Si, Sj, penalty=1e3)
+                reward = R_mapf(self.label, self.goal, Si, Sj)
 
                 # Only cares about the landing state
                 if Sj == 'EDGECONFLICT':

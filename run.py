@@ -2,7 +2,7 @@ from naive_agent import SafeAgent, RandomAgent
 from search_agent import AStarAgent, DijkstraAgent
 from mdp_agent import MDPAgent, HistoryMDPAgent
 from pomdp_agent import POMDPAgent, QMDPAgent
-from ts_agent import UniformTreeSearchAgent
+from ts_agent import UniformTreeSearchAgent, AsymmetricTreeSearch
 from ma_env import MAPF
 from animator import Animation
 
@@ -111,9 +111,11 @@ if __name__ == '__main__':
     # agents.append(MDPAgent(1, args.goals[args.agents[1]], belief_update=True))
     # agents.append(QMDPAgent(1, args.goals[args.agents[1]]))
     # agents.append(HistoryMDPAgent(1, args.goals[args.agents[1]], horizon=4))
-    agents.append(UniformTreeSearchAgent(1, args.goals[args.agents[1]],
-                                         belief_update=True, depth=4, node_eval='HEU',
-                                         check_repeated_states=True))
+    # agents.append(UniformTreeSearchAgent(1, args.goals[args.agents[1]],
+    #                                      belief_update=True, depth=2, node_eval='HEU-C',
+    #                                      check_repeated_states=False))
+    agents.append(AsymmetricTreeSearch(1, args.goals[args.agents[1]],
+                                       belief_update=True, max_it=1e2))
 
     # agents.append(DijkstraAgent(2, args.goals[args.agents[2]]))
 

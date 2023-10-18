@@ -23,18 +23,25 @@ class TreeNode(object):
         reward: immediate reward from the parent node and the branch action
     """
 
-    def __init__(self, tp, h, locations, reward, beliefs=None, prev_actions=None, history=[]):
+    def __init__(self, tp, h, locations,
+                 reward=None, beliefs=None, prev_actions=None, history=[]):
         if tp not in ['MAX', 'EXP']:
             raise ValueError('No such node type!')
         self.type = tp
         self.height = h
         self.locations = locations
-        self.val = None
+        self.val = 0
         self.reward = reward
         self.children = []
         self.beliefs = beliefs
         self.prev_actions = prev_actions
         self.history = history
+
+        # advanced usage
+        self.num_visit = 0
+
+    def set_parent(self, p):
+        self.parent = p
 
 
 class UniformTreeSearchAgent(MDPAgent):
@@ -199,21 +206,22 @@ class UniformTreeSearchAgent(MDPAgent):
 
         self.beliefs_num = beliefs_num  # for later reuse
 
+        node_to_eval.val = 0
         if self.check_repeated_states:
             if node_to_eval.locations in node_to_eval.history:
                 first_occur = node_to_eval.history.index(node_to_eval.locations)
-                node_to_eval.val = node_to_eval.reward - 10 * (len(node_to_eval.history) - first_occur)
-                return
+                node_to_eval.val -= 10 * (len(node_to_eval.history) - first_occur)
 
         if self.node_eval == 'IMMED':
-            node_to_eval.val = node_to_eval.reward
             return
-        if self.node_eval == 'HEU':
+        if self.node_eval.startswith('HEU'):
             if node_to_eval.locations == 'EDGECONFLICT':
-                node_to_eval.val = -1000
                 return
             loc = node_to_eval.locations[self.label]
-            node_to_eval.val = 1000 - man_dist(loc, self.goal)
+            node_to_eval.val += 1000 - man_dist(loc, self.goal)
+            if self.node_eval.endswith('-C'):
+                for j, loc_j in enumerate(node_to_eval.locations):
+                    node_to_eval.val += 1 / 5 * man_dist(loc_j, loc)
             return
 
         # Get all possible states
@@ -318,3 +326,188 @@ class UniformTreeSearchAgent(MDPAgent):
             probs = probs / np.sum(probs)
             node.val = np.dot(np.array(child_values) * self.discount + rewards, probs)
             return node.val
+
+
+class AsymmetricTreeSearch(MDPAgent):
+    """
+    MCTS with both chance nodes and decion nodes
+    Implement asymmetric tree growth
+    """
+
+    def __init__(self, label, goal,
+                 belief_update=True, discount=0.9, max_it=100, explore_c=1,
+                 node_eval='HEU'):
+        super(AsymmetricTreeSearch, self).__init__(label, goal, belief_update)
+
+        self.discount = discount
+        self.max_it = int(max_it)
+        self.c = explore_c
+        self.node_eval = node_eval
+
+    def act(self, state):
+        N, prev_actions, locations, layout = state
+        if self.beliefs is None:
+            self.beliefs = self.init_belief(N, layout)
+            self.layout = layout
+            self.num_agents = N
+        if locations[self.label] == self.goal:
+            return 0
+
+        # Formulate a search tree based on the current state and belief
+        # Construc the search at the beginning
+        if self.policy is None:
+            self.policy = self.tree_search(locations)
+
+        # Update the belief and re-construct the search tree
+        if prev_actions is not None:
+            if self.belief_update:
+                self.beliefs = self.update_belief(self.beliefs,
+                                                  self.prev_locations,
+                                                  prev_actions,
+                                                  soft=1e-2)
+            self.policy = self.tree_search(locations, prev_actions)
+
+        self.print_belief(self.beliefs)
+
+        action_values = list(map(lambda c: c.val / c.num_visit, self.policy.children))
+        print(action_values)
+        action = np.argmax(action_values)
+        if action not in get_avai_actions_mapf(locations[self.label], self.layout):
+            action = 0
+        print(action)
+        self.prev_locations = locations
+        return action
+
+    def tree_search(self, curr_locs, prev_actions=None):
+        if getattr(self, 'root', None) is None:
+            self.root = TreeNode('MAX', 0, curr_locs, 0, self.beliefs)
+            self.self_br = tuple(range(5))
+            self.oppo_br = tuple(product(range(5), repeat=self.num_agents - 1))
+        else:
+            # Reuse the previous search tree
+            self_a_idx = prev_actions[self.label]
+            del prev_actions[self.label]
+            oppo_a = tuple(prev_actions)
+            oppo_a_idx = tuple(product(range(5), repeat=self.num_agents - 1)).index(oppo_a)
+            self.root = self.root.children[self_a_idx].children[oppo_a_idx]
+
+        for it in tqdm(range(self.max_it)):
+            node_to_exp = self.select(self.root)
+            node_to_eval = self.expand(node_to_exp)
+            info = self.evaluate(node_to_eval)
+            self.backup(node_to_eval, info)
+        return self.root
+
+    def select(self, root):
+        """
+        Best-first node selection:
+        V_s / N_s + sqrt(2N / N_s)
+        Note that Q(s, a) = V_s / N_s is not stationary
+        Upon each chosen action, sample a succ_state by the transition model
+        """
+        curr_node = root  # the iterating node is always a MAX node
+        selected_a = 0
+        while True:
+            # a state whose action has not been fully expanded or is a leaf node
+            if len(curr_node.children) < 5:
+                return curr_node
+
+            # or, iteratively find the best action with UCB heuristic
+            Qs = list(map(lambda n: n.val / n.num_visit
+                          + self.c * np.sqrt(2 * curr_node.num_visit / n.num_visit),
+                          curr_node.children))
+            selected_a = np.argmax(Qs)
+
+            oppo_a_idx = self.sample_from_belief(curr_node, selected_a)
+            curr_node = curr_node.children[selected_a].children[oppo_a_idx]
+
+    def expand(self, node_to_exp):
+        """
+        Given a MAX node, try a not-chosen action, and a new EXP node
+        Then sample a new child MAX node with belief revision
+        """
+        expand_a = len(node_to_exp.children)
+        succ_node = TreeNode('EXP', node_to_exp.height + 1,
+                             locations=node_to_exp.locations,
+                             beliefs=node_to_exp.beliefs,
+                             prev_actions=expand_a)
+        node_to_exp.children.append(succ_node)
+        succ_node.set_parent(node_to_exp)
+        succ_node.children = ['NULL' for i in range(5 ** (self.num_agents - 1))]
+        oppo_a_idx = self.sample_from_belief(node_to_exp, expand_a)
+        return node_to_exp.children[expand_a].children[oppo_a_idx]
+
+    def sample_from_belief(self, node, action, epsilon=1e-1):
+        """
+        Given a MAX node and an action,
+        sample an action profile for the other agents,
+        return the index of the sampled profile
+        """
+        oppo_a = []
+        beliefs_pi, beliefs_prob = node.beliefs
+        for i in range(self.num_agents):
+            if i == self.label:
+                continue
+            if node.locations == 'EDGECONFLICT':
+                oppo_a.append(0)  # any action is invalid, stop by default
+                continue
+            pi = np.random.choice(beliefs_pi[i], p=beliefs_prob[i])
+            action_dist = np.add(pi[hash(node.locations[i])], epsilon)
+            a_i = np.random.choice(range(5), p=action_dist / np.sum(action_dist))
+            oppo_a.append(a_i)
+        oppo_a_tuple = tuple(oppo_a)
+        oppo_a_idx = tuple(product(range(5), repeat=self.num_agents - 1)).index(oppo_a_tuple)
+
+        if node.children[action].children[oppo_a_idx] == 'NULL':
+            prev_joint_a = deepcopy(oppo_a)
+            prev_joint_a.insert(self.label, action)
+            if self.belief_update and node.locations != 'EDGECONFLICT':
+                succ_beliefs = self.update_belief(node.beliefs,
+                                                  node.locations,
+                                                  prev_joint_a,
+                                                  soft=1e-2)
+            else:
+                succ_beliefs = node.beliefs
+            succ_locs = T_mapf(self.label, self.goal, self.layout,
+                               node.locations, prev_joint_a)
+            rwd = R_mapf(self.label, self.goal, node.locations, succ_locs, penalty=1e3)
+            succ_node = TreeNode('MAX', node.height + 2,  # exp+1 and max+1
+                                 locations=succ_locs,
+                                 reward=rwd,
+                                 beliefs=succ_beliefs,
+                                 prev_actions=prev_joint_a)
+            node.children[action].children[oppo_a_idx] = succ_node
+            succ_node.set_parent(node.children[action])
+
+        return oppo_a_idx
+
+    def evaluate(self, node_to_eval):
+        """
+        By enquiring contextual MDP: M(belief)
+        """
+        val = 0
+        if self.node_eval.startswith('HEU'):
+            if node_to_eval.locations == 'EDGECONFLICT':
+                return val
+            loc = node_to_eval.locations[self.label]
+            val += 1000 - man_dist(loc, self.goal)
+            if self.node_eval.endswith('-C'):
+                for j, loc_j in enumerate(node_to_eval.locations):
+                    val += 1 / 5 * man_dist(loc_j, loc)
+            return val
+
+    def backup(self, evaled_node, info):
+        future_val = info
+        curr_node = evaled_node
+        while getattr(curr_node, 'parent', None) is not None:
+            # MAX node
+            curr_node.num_visit += 1
+            curr_node.val += self.discount * future_val + curr_node.reward
+            future_val = curr_node.val
+
+            # EXP node
+            curr_node = curr_node.parent
+            curr_node.num_visit += 1
+            curr_node.val = future_val
+
+            curr_node = curr_node.parent

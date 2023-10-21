@@ -186,7 +186,7 @@ def T_mapf(label, goal, layout, locations, action_profile):
     return tuple(succ_locations)
 
 
-def R_mapf(label, goal, pred_locs, succ_locs, penalty=1000):
+def R_mapf(label, goal, pred_locs, succ_locs, penalty=1e6):
     """
     The multi-agent env reward for this pivotal agent:
     given the prev and succ locations,

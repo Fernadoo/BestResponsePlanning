@@ -8,14 +8,40 @@ from ts_agent import UniformTreeSearchAgent, AsymmetricTreeSearch
 from ma_env import MAPF
 
 import argparse
+import pickle
 from queue import Queue
 from collections import namedtuple
 
 import numpy as np
 from matplotlib import pyplot as plt
+from matplotlib import colors as mcolors
 from tqdm import tqdm
 
 INT_MAX = np.iinfo(np.int64).max
+COLORS = list(mcolors.TABLEAU_COLORS)
+
+
+###################
+# Renaming agents #
+###################
+
+
+def MDPAgentFixedBelief(label, goal):
+    return MDPAgent(label, goal, belief_update=False)
+
+
+def MDPAgentUpdateBelief(label, goal):
+    return MDPAgent(label, goal, belief_update=True)
+
+
+def UniformTreeSearchAgentD2(label, goal):
+    return UniformTreeSearchAgent(label, goal, belief_update=True,
+                                  depth=2, node_eval='HEU-C',
+                                  check_repeated_states=True)
+
+###############
+# Experiments #
+###############
 
 
 def BFS(init, layout):
@@ -59,14 +85,7 @@ def BFS(init, layout):
     return dist
 
 
-def vis_path_layout(dist, fig, ax):
-    hmap = ax.matshow(dist)
-    fig.colorbar(hmap, ax=ax, location='bottom',
-                 ticks=range(0, np.max(dist) + 1, int(np.ceil(np.max(dist) / 10))),
-                 shrink=0.7)
-
-
-def exp_opponents(ax, me, init, layout, dist, opponents, num_sim=1e2):
+def exp_opponents(me, init, layout, dist, opponents, num_sim=1e2):
     goals_min_to_max = dict()
     dist_max = np.max(dist)
     for d in range(1, dist_max):
@@ -102,20 +121,36 @@ def exp_opponents(ax, me, init, layout, dist, opponents, num_sim=1e2):
             _, steps = game.run()
             record.append(steps[0])
         path_min_to_max.append(record)
+
     mean = np.array(list(map(np.mean, path_min_to_max)))
     std = np.array(list(map(np.std, path_min_to_max)))
     quant05 = np.array(list(map(lambda l: np.quantile(l, 0.05), path_min_to_max)))
     quant95 = np.array(list(map(lambda l: np.quantile(l, 0.95), path_min_to_max)))
-    print(mean, quant05, quant95)
-    ax.plot(range(1, dist_max), mean, label='SafeAgent')
-    ax.fill_between(range(1, dist_max),
-                    np.where(mean - std >= 0, mean - std, 0),
-                    mean + std,
-                    alpha=0.2, label='std')
-    ax.fill_between(range(1, dist_max),
-                    quant05,
-                    quant95,
-                    alpha=0.2, label='quantile')
+
+    return dict(zip(['path_min_to_max', 'mean', 'std', 'quant05', 'quant95'],
+                    [path_min_to_max, mean, std, quant05, quant95]))
+
+
+def vis_path_layout(dist, fig, ax):
+    hmap = ax.matshow(dist)
+    fig.colorbar(hmap, ax=ax, location='bottom',
+                 ticks=range(0, np.max(dist) + 1, int(np.ceil(np.max(dist) / 10))),
+                 shrink=0.7)
+
+
+def plot_performance(dist, data, fig, ax):
+    dist_max = np.max(dist)
+    for i, name in enumerate(data):
+        path_min_to_max, mean, std, quant05, quant95 = data[name].values()
+        ax.plot(range(1, dist_max), mean, label=name, color=COLORS[i])
+        ax.fill_between(range(1, dist_max),
+                        range(1, dist_max),
+                        mean + std,
+                        alpha=0.2, label='std', color=COLORS[i])
+        # ax.fill_between(range(1, dist_max),
+        #                 quant05,
+        #                 quant95,
+        #                 alpha=0.2, label='quantile')
     ax.plot(range(1, dist_max), range(1, dist_max), linestyle=':')
     ax.legend()
 
@@ -134,6 +169,10 @@ def get_args():
                         help='Specify the figsize')
     parser.add_argument('--size', dest='size', type=int, default=7,
                         help='Specify the figsize')
+    parser.add_argument('--plot', dest='plot', action='store_true',
+                        help='Plot the experimental results')
+    parser.add_argument('--load', dest='load', action='store_true',
+                        help='Load the existing experimental results')
 
     args = parser.parse_args()
     args.map = parse_map_from_file(args.map)
@@ -148,15 +187,30 @@ if __name__ == '__main__':
     show_args(args)
 
     opponents = [SafeAgent, RandomAgent, AStarAgent]
-    me = SafeAgent
-
-    row, col = args.map.shape
-    ratio = row // col * args.size
-    fig, ax = plt.subplots(nrows=1, ncols=2, figsize=(ratio * 2, args.size), dpi=100)
+    me_agents = [SafeAgent,
+                 MDPAgentFixedBelief,
+                 MDPAgentUpdateBelief,
+                 UniformTreeSearchAgentD2]
 
     dist = BFS(args.starts['p1'], args.map)
-    vis_path_layout(dist, fig, ax[0])
-    exp_opponents(ax[1],
-                  me, args.starts['p1'], args.map, dist, opponents,
-                  num_sim=args.num_sim)
-    plt.show()
+
+    if not args.load:
+        for me in me_agents:
+            print(f'--- TESTING {me.__name__} ---')
+            info = exp_opponents(me, args.starts['p1'], args.map, dist, opponents,
+                                 num_sim=args.num_sim)
+            with open(f'INFO_{me.__name__}.pkl', 'wb') as pklf:
+                pickle.dump(info, pklf)
+
+    if args.plot:
+        data = dict()
+        for me in me_agents:
+            with open(f'INFO_{me.__name__}.pkl', 'rb') as pklf:
+                data[f'{me.__name__}'] = pickle.load(pklf)
+
+        row, col = args.map.shape
+        ratio = row // col * args.size
+        fig, ax = plt.subplots(nrows=1, ncols=2, figsize=(ratio * 2, args.size), dpi=100)
+        vis_path_layout(dist, fig, ax[0])
+        plot_performance(dist, data, fig, ax[1])
+        plt.show()

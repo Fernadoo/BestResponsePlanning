@@ -48,9 +48,9 @@ class UniformTreeSearchAgent(MDPAgent):
     """docstring for UniformTreeSearchAgent"""
 
     def __init__(self, label, goal,
-                 belief_update=True, depth=2, node_eval='MDP', discount=0.9,
+                 belief_update=True, verbose=False, depth=2, node_eval='MDP', discount=0.9,
                  check_repeated_states=False):
-        super(UniformTreeSearchAgent, self).__init__(label, goal, belief_update)
+        super(UniformTreeSearchAgent, self).__init__(label, goal, belief_update, verbose)
 
         # limited depth for expansion, -1 means to expand until termination
         self.depth = depth
@@ -85,15 +85,14 @@ class UniformTreeSearchAgent(MDPAgent):
                                                   soft=1e-2)
             self.policy = self.tree_search(locations, prev_actions)
 
-        self.print_belief(self.beliefs)
+        if self.verbose:
+            self.print_belief(self.beliefs)
 
         # Enquire the policy
         action_values = list(map(lambda c: c.val, self.policy.children))
-        print(action_values)
         action = np.argmax(action_values)
         if action not in get_avai_actions_mapf(locations[self.label], self.layout):
             action = 0
-        print(action)
         self.prev_locations = locations
         return action
 
@@ -111,7 +110,12 @@ class UniformTreeSearchAgent(MDPAgent):
             self.root = self.root.children[self_a_idx].children[oppo_a_idx]
 
         node_to_eval = self.expand(self.root)
-        for _ in tqdm(range(len(self.expanded.queue) + 1)):
+
+        if self.verbose:
+            iterator = tqdm(range(len(self.expanded.queue) + 1))
+        else:
+            iterator = range(len(self.expanded.queue) + 1)
+        for _ in iterator:
             if node_to_eval is None:
                 break
             self.evaluate(node_to_eval)
@@ -174,7 +178,7 @@ class UniformTreeSearchAgent(MDPAgent):
                         succ_beliefs = curr_node.beliefs
                     succ_locs = T_mapf(self.label, self.goal, self.layout,
                                        curr_node.locations, prev_joint_a)
-                    rwd = R_mapf(self.label, self.goal, curr_node.locations, succ_locs, penalty=1e3)
+                    rwd = R_mapf(self.label, self.goal, curr_node.locations, succ_locs)
                     hist = deepcopy(curr_node.history)
                     hist.append(curr_node.locations)
                     succ_node = TreeNode('MAX', curr_node.height + 1,

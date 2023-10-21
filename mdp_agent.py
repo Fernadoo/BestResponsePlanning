@@ -24,7 +24,7 @@ class MDPAgent(object):
     3. Observe how the others played and update the belief
     """
 
-    def __init__(self, label, goal, belief_update=True):
+    def __init__(self, label, goal, belief_update=True, verbose=False):
         super(MDPAgent, self).__init__()
         self.label = label
         self.goal = goal
@@ -36,6 +36,7 @@ class MDPAgent(object):
         self.beliefs = None
         self.policy = None
         self.belief_update = belief_update
+        self.verbose = verbose
 
     def init_belief(self, num_agents, layout):
         """
@@ -153,7 +154,7 @@ class MDPAgent(object):
                 Sj = T_mapf(self.label, self.goal, self.layout, Si, actions)
                 j = S.index(Sj)
                 A = actions[self.label]
-                reward = R_mapf(self.label, self.goal, Si, Sj, penalty=1e3)
+                reward = R_mapf(self.label, self.goal, Si, Sj)
 
                 # Only cares about the landing state
                 if Sj == 'EDGECONFLICT':
@@ -173,11 +174,11 @@ class MDPAgent(object):
 
         VI = mdp.ValueIteration(T, R, discount=0.9)
         VI.run()
-        # For theory proving
-        with open('mdp_values.pkl', 'wb') as pklf:
-            pickle.dump((self.label, self.goal, self.layout,
-                         S, VI.V, VI.policy),
-                        pklf)
+        # # For theory proving
+        # with open('mdp_values.pkl', 'wb') as pklf:
+        #     pickle.dump((self.label, self.goal, self.layout,
+        #                  S, VI.V, VI.policy),
+        #                 pklf)
         return VI.policy
 
     def act(self, state):
@@ -199,7 +200,8 @@ class MDPAgent(object):
             self.beliefs = self.update_belief(self.beliefs, self.prev_locations, prev_actions)
             self.policy = self.translate_solve()
 
-        self.print_belief(self.beliefs)
+        if self.verbose:
+            self.print_belief(self.beliefs)
         Si = self.S.index(locations)
         action = self.policy[Si]
         self.prev_locations = locations

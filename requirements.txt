@@ -1,0 +1,4 @@
+matplotlib==3.6.2
+numpy==1.24.3
+pymdptoolbox==4.0b3
+tqdm==4.64.1

@@ -29,6 +29,8 @@ class MAPF(object):
         # self.all_states = self.enumerate_all()
 
         self.state = State(self.N, None, self.starts, self.layout)
+        self.reach_goal = np.zeros(self.N)
+        self.max_steps = max(self.layout.shape) * 10
 
     def transit(self, action_profile):
         """
@@ -79,6 +81,9 @@ class MAPF(object):
         returns whether it is an end.
         """
         _, _, locations, _ = self.state
+        for i, loc in enumerate(locations):
+            if loc != self.goals[i]:
+                self.reach_goal[i] += 1
         if locations == self.goals:
             return True
         return False
@@ -89,10 +94,14 @@ class MAPF(object):
         In this env, returns a list of (actions, succ_locations)
         """
         history = [(None, self.state.Locations)]
+        self.step = 0
         while not self.check_end():
             action_profile = []
             for i in range(self.N):
                 action_profile.append(self.agents[i].act(self.state))
             _, action_profile, locations, _ = self.transit(action_profile)
             history.append((deepcopy(action_profile), locations))
-        return history
+            self.step += 1
+            if self.step > self.max_steps:
+                break
+        return history, self.reach_goal

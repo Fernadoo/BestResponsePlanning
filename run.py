@@ -5,43 +5,9 @@ from pomdp_agent import POMDPAgent, QMDPAgent
 from ts_agent import UniformTreeSearchAgent, AsymmetricTreeSearch
 from ma_env import MAPF
 from animator import Animation
+from utils import parse_map_from_file, parse_locs, show_args
 
 import argparse
-import os
-
-import numpy as np
-
-
-def parse_map_from_file(map_config):
-    PREFIX = 'maps/'
-    POSTFIX = '.map'
-    if not os.path.exists(PREFIX + map_config + POSTFIX):
-        raise ValueError('Map config does not exist!')
-    layout = []
-    with open(PREFIX + map_config + POSTFIX, 'r') as f:
-        line = f.readline()
-        while line:
-            if line.startswith('#'):
-                pass
-            else:
-                row = []
-                for char in line:
-                    if char == '.':
-                        row.append(0)
-                    elif char == '@':
-                        row.append(1)
-                    else:
-                        continue
-                layout.append(row)
-            line = f.readline()
-    return np.array(layout)
-
-
-def parse_locs(locs):
-    loc_dict = dict()
-    for i, l in enumerate(locs):
-        loc_dict[f'p{i + 1}'] = eval(l.replace('_', ','))
-    return loc_dict
 
 
 def get_args():
@@ -75,14 +41,6 @@ def get_args():
     return args
 
 
-def show_args(args):
-    args = vars(args)
-    for key in args:
-        print(f'{key.upper()}:')
-        print(args[key])
-        print('-------------\n')
-
-
 def show_hist(history):
     action_list = ['stop', 'up', 'right', 'down', 'left']
     for t, info in enumerate(history):
@@ -108,14 +66,14 @@ if __name__ == '__main__':
 
     # agents.append(SafeAgent(1, args.goals[args.agents[1]]))
     # agents.append(POMDPAgent(1, args.goals[args.agents[1]], exist_policy=True))
-    # agents.append(MDPAgent(1, args.goals[args.agents[1]], belief_update=True))
+    agents.append(MDPAgent(1, args.goals[args.agents[1]], belief_update=False))
     # agents.append(QMDPAgent(1, args.goals[args.agents[1]]))
     # agents.append(HistoryMDPAgent(1, args.goals[args.agents[1]], horizon=4))
     # agents.append(UniformTreeSearchAgent(1, args.goals[args.agents[1]],
     #                                      belief_update=True, depth=2, node_eval='HEU-C',
     #                                      check_repeated_states=False))
-    agents.append(AsymmetricTreeSearch(1, args.goals[args.agents[1]],
-                                       belief_update=True, max_it=1e2))
+    # agents.append(AsymmetricTreeSearch(1, args.goals[args.agents[1]],
+    #                                    belief_update=True, max_it=1e2))
 
     # agents.append(DijkstraAgent(2, args.goals[args.agents[2]]))
 
@@ -123,8 +81,9 @@ if __name__ == '__main__':
                 list(args.starts.values()),
                 list(args.goals.values()),
                 args.map)
-    history = game.run()
+    history, steps = game.run()
     show_hist(history)
+    print(steps)
 
     if args.vis:
         paths = []

@@ -39,6 +39,12 @@ def UniformTreeSearchAgentD2(label, goal):
                                   depth=2, node_eval='HEU-C',
                                   check_repeated_states=True)
 
+
+def AsymmetricTreeSearchE3(label, goal):
+    return AsymmetricTreeSearch(label, goal, belief_update=True,
+                                max_it=1e3, node_eval='HEU-C')
+
+
 ###############
 # Experiments #
 ###############
@@ -146,7 +152,7 @@ def plot_performance(dist, data, fig, ax):
         ax.fill_between(range(1, dist_max),
                         range(1, dist_max),
                         mean + std,
-                        alpha=0.2, label='std', color=COLORS[i])
+                        alpha=0.2, color=COLORS[i])
         # ax.fill_between(range(1, dist_max),
         #                 quant05,
         #                 quant95,
@@ -187,10 +193,11 @@ if __name__ == '__main__':
     show_args(args)
 
     opponents = [SafeAgent, RandomAgent, AStarAgent]
-    me_agents = [SafeAgent,
-                 MDPAgentFixedBelief,
-                 MDPAgentUpdateBelief,
-                 UniformTreeSearchAgentD2]
+    # me_agents = [SafeAgent,
+    #              MDPAgentFixedBelief,
+    #              MDPAgentUpdateBelief,
+    #              UniformTreeSearchAgentD2]
+    me_agents = [AsymmetricTreeSearchE3]
 
     dist = BFS(args.starts['p1'], args.map)
 

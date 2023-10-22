@@ -69,11 +69,12 @@ if __name__ == '__main__':
     # agents.append(MDPAgent(1, args.goals[args.agents[1]], belief_update=False, verbose=True))
     # agents.append(QMDPAgent(1, args.goals[args.agents[1]]))
     # agents.append(HistoryMDPAgent(1, args.goals[args.agents[1]], horizon=4))
-    agents.append(UniformTreeSearchAgent(1, args.goals[args.agents[1]],
-                                         belief_update=True, depth=2, node_eval='HEU-C',
-                                         check_repeated_states=True))
-    # agents.append(AsymmetricTreeSearch(1, args.goals[args.agents[1]],
-    #                                    belief_update=True, max_it=1e2))
+    # agents.append(UniformTreeSearchAgent(1, args.goals[args.agents[1]],
+    #                                      belief_update=True, depth=2, node_eval='HEU-C',
+    #                                      check_repeated_states=True))
+    agents.append(AsymmetricTreeSearch(1, args.goals[args.agents[1]],
+                                       belief_update=True, verbose=False,
+                                       max_it=1e3, node_eval='HEU-C'))
 
     # agents.append(DijkstraAgent(2, args.goals[args.agents[2]]))
 

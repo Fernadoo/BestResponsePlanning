@@ -339,9 +339,9 @@ class AsymmetricTreeSearch(MDPAgent):
     """
 
     def __init__(self, label, goal,
-                 belief_update=True, discount=0.9, max_it=100, explore_c=1,
+                 belief_update=True, verbose=False, discount=0.9, max_it=100, explore_c=1,
                  node_eval='HEU'):
-        super(AsymmetricTreeSearch, self).__init__(label, goal, belief_update)
+        super(AsymmetricTreeSearch, self).__init__(label, goal, belief_update, verbose)
 
         self.discount = discount
         self.max_it = int(max_it)
@@ -371,14 +371,15 @@ class AsymmetricTreeSearch(MDPAgent):
                                                   soft=1e-2)
             self.policy = self.tree_search(locations, prev_actions)
 
-        self.print_belief(self.beliefs)
+        if self.verbose:
+            self.print_belief(self.beliefs)
 
         action_values = list(map(lambda c: c.val / c.num_visit, self.policy.children))
-        print(action_values)
+        # print(action_values)
         action = np.argmax(action_values)
         if action not in get_avai_actions_mapf(locations[self.label], self.layout):
             action = 0
-        print(action)
+        # print(locations[self.label], action)
         self.prev_locations = locations
         return action
 
@@ -390,16 +391,33 @@ class AsymmetricTreeSearch(MDPAgent):
         else:
             # Reuse the previous search tree
             self_a_idx = prev_actions[self.label]
-            del prev_actions[self.label]
-            oppo_a = tuple(prev_actions)
+            oppo_a = tuple(prev_actions[:self.label] + prev_actions[self.label + 1:])
             oppo_a_idx = tuple(product(range(5), repeat=self.num_agents - 1)).index(oppo_a)
-            self.root = self.root.children[self_a_idx].children[oppo_a_idx]
+            succ_root = self.root.children[self_a_idx].children[oppo_a_idx]
 
-        for it in tqdm(range(self.max_it)):
+            # However, chances are that oppo_a have not been sampled previously
+            if succ_root == 'NULL':
+                rwd = R_mapf(self.label, self.goal, self.prev_locations, curr_locs)
+                succ_root = TreeNode('MAX', self.root.height + 2,  # exp+1 and max+1
+                                     locations=curr_locs,
+                                     reward=rwd,
+                                     beliefs=self.beliefs,
+                                     prev_actions=prev_actions)
+                self.root.children[self_a_idx].children[oppo_a_idx] = succ_root
+                succ_root.set_parent(self.root.children[self_a_idx])
+
+            self.root = succ_root
+
+        if self.verbose:
+            iterator = tqdm(range(self.max_it))
+        else:
+            iterator = range(self.max_it)
+        for it in iterator:
             node_to_exp = self.select(self.root)
             node_to_eval = self.expand(node_to_exp)
             info = self.evaluate(node_to_eval)
             self.backup(node_to_eval, info)
+        # print(f' lookahead for {node_to_eval.height - self.root.height} steps')
         return self.root
 
     def select(self, root):
@@ -441,7 +459,7 @@ class AsymmetricTreeSearch(MDPAgent):
         oppo_a_idx = self.sample_from_belief(node_to_exp, expand_a)
         return node_to_exp.children[expand_a].children[oppo_a_idx]
 
-    def sample_from_belief(self, node, action, epsilon=1e-1):
+    def sample_from_belief(self, node, action, epsilon=1e-2):
         """
         Given a MAX node and an action,
         sample an action profile for the other agents,
@@ -474,7 +492,7 @@ class AsymmetricTreeSearch(MDPAgent):
                 succ_beliefs = node.beliefs
             succ_locs = T_mapf(self.label, self.goal, self.layout,
                                node.locations, prev_joint_a)
-            rwd = R_mapf(self.label, self.goal, node.locations, succ_locs, penalty=1e3)
+            rwd = R_mapf(self.label, self.goal, node.locations, succ_locs)
             succ_node = TreeNode('MAX', node.height + 2,  # exp+1 and max+1
                                  locations=succ_locs,
                                  reward=rwd,
@@ -507,11 +525,11 @@ class AsymmetricTreeSearch(MDPAgent):
             # MAX node
             curr_node.num_visit += 1
             curr_node.val += self.discount * future_val + curr_node.reward
-            future_val = curr_node.val
+            future_val = self.discount * future_val + curr_node.reward
 
             # EXP node
             curr_node = curr_node.parent
             curr_node.num_visit += 1
-            curr_node.val = future_val
+            curr_node.val += future_val
 
             curr_node = curr_node.parent

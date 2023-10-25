@@ -179,6 +179,8 @@ def get_args():
                         help='Plot the experimental results')
     parser.add_argument('--load', dest='load', action='store_true',
                         help='Load the existing experimental results')
+    parser.add_argument('--prefix', dest='prefix', type=str, default='./',
+                        help='Specify the prefix of exp_file loading')
 
     args = parser.parse_args()
     args.map = parse_map_from_file(args.map)
@@ -193,11 +195,11 @@ if __name__ == '__main__':
     show_args(args)
 
     opponents = [SafeAgent, RandomAgent, AStarAgent]
-    # me_agents = [SafeAgent,
-    #              MDPAgentFixedBelief,
-    #              MDPAgentUpdateBelief,
-    #              UniformTreeSearchAgentD2]
-    me_agents = [AsymmetricTreeSearchE3]
+    me_agents = [SafeAgent,
+                 MDPAgentFixedBelief,
+                 MDPAgentUpdateBelief,
+                 UniformTreeSearchAgentD2,
+                 AsymmetricTreeSearchE3]
 
     dist = BFS(args.starts['p1'], args.map)
 
@@ -212,7 +214,7 @@ if __name__ == '__main__':
     if args.plot:
         data = dict()
         for me in me_agents:
-            with open(f'INFO_{me.__name__}.pkl', 'rb') as pklf:
+            with open(f'{args.prefix}/INFO_{me.__name__}.pkl', 'rb') as pklf:
                 data[f'{me.__name__}'] = pickle.load(pklf)
 
         row, col = args.map.shape
@@ -220,4 +222,5 @@ if __name__ == '__main__':
         fig, ax = plt.subplots(nrows=1, ncols=2, figsize=(ratio * 2, args.size), dpi=100)
         vis_path_layout(dist, fig, ax[0])
         plot_performance(dist, data, fig, ax[1])
+        plt.savefig(f'{args.prefix}/mean_std.png', dpi=200)
         plt.show()

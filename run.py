@@ -73,8 +73,8 @@ if __name__ == '__main__':
     #                                      belief_update=True, depth=2, node_eval='HEU-C',
     #                                      check_repeated_states=True))
     agents.append(AsymmetricTreeSearch(1, args.goals[args.agents[1]],
-                                       belief_update=True, verbose=False,
-                                       max_it=1e3, node_eval='HEU-C'))
+                                       belief_update=True, verbose=True,
+                                       max_it=1e4, node_eval='HEU-C'))
 
     # agents.append(DijkstraAgent(2, args.goals[args.agents[2]]))
 

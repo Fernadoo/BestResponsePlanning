@@ -11,6 +11,7 @@ import pickle
 
 import numpy as np
 from mdptoolbox import mdp
+from tqdm import tqdm
 
 
 class MDPAgent(object):
@@ -24,7 +25,7 @@ class MDPAgent(object):
     3. Observe how the others played and update the belief
     """
 
-    def __init__(self, label, goal, belief_update=True, verbose=False):
+    def __init__(self, label, goal, belief_update=True, soft_update=1e-3, verbose=False):
         super(MDPAgent, self).__init__()
         self.label = label
         self.goal = goal
@@ -36,6 +37,7 @@ class MDPAgent(object):
         self.beliefs = None
         self.policy = None
         self.belief_update = belief_update
+        self.soft_update = soft_update
         self.verbose = verbose
 
     def init_belief(self, num_agents, layout):
@@ -57,18 +59,39 @@ class MDPAgent(object):
 
         # For every other agents, for every possible goals
         # find the optimal single-agent policies (shortest-path tree)
+        # for i in tqdm(range(num_agents)):
+        #     if i == self.label:
+        #         continue
+        #     for goal in feasible_goals:
+        #         policy = dijkstra(goal, layout)
+        #         for loc in policy:
+        #             action_dist = [0, 0, 0, 0, 0]
+        #             action_dist[policy[loc]] = 1
+        #             # action_dist = soft_max(action_dist)
+        #             policy[loc] = action_dist
+        #         beliefs_pi[i].append(policy)
+        #         beliefs_prob[i].append(NORM_PR)
+        #     beliefs_prob[i] = beliefs_prob[i] / np.sum(beliefs_prob[i])
+
+        if self.verbose:
+            goal_iterator = tqdm(feasible_goals)
+        else:
+            goal_iterator = feasible_goals
+        for goal in goal_iterator:
+            policy = dijkstra(goal, layout)
+            for loc in policy:
+                action_dist = [0, 0, 0, 0, 0]
+                action_dist[policy[loc]] = 1
+                policy[loc] = action_dist
+
+            for i in range(num_agents):
+                if i == self.label:
+                    continue
+                beliefs_pi[i].append(deepcopy(policy))
+                beliefs_prob[i].append(NORM_PR)
         for i in range(num_agents):
             if i == self.label:
                 continue
-            for goal in feasible_goals:
-                policy = dijkstra(goal, layout)
-                for loc in policy:
-                    action_dist = [0, 0, 0, 0, 0]
-                    action_dist[policy[loc]] = 1
-                    # action_dist = soft_max(action_dist)
-                    policy[loc] = action_dist
-                beliefs_pi[i].append(policy)
-                beliefs_prob[i].append(NORM_PR)
             beliefs_prob[i] = beliefs_prob[i] / np.sum(beliefs_prob[i])
 
         return beliefs_pi, beliefs_prob
@@ -85,6 +108,7 @@ class MDPAgent(object):
                 continue
             new_probs = np.zeros(len(Pi_i))
             for j, pi in enumerate(Pi_i):
+                # print(prev_actions)
                 new_probs[j] = (
                     Pi_i[j][hash(prev_locs[i])][prev_actions[i]]
                     * beliefs_prob[i][j]
@@ -102,6 +126,7 @@ class MDPAgent(object):
         Formulate an MDP from the pivotal agent's perspective,
         and invoke mdptoolbox
         """
+        t0 = time.time()
         if getattr(self, 'beliefs', None) is None or\
                 getattr(self, 'layout', None) is None:
             raise RuntimeError("Get invalid beliefs, "
@@ -172,8 +197,13 @@ class MDPAgent(object):
                         )
                     R[A, i, j] += reward * coef
 
-        VI = mdp.ValueIteration(T, R, discount=0.9)
+        t1 = time.time()
+        # print(f"Translation costs {t1 - t0}s")
+        VI = mdp.ValueIteration(T, R, discount=0.9, max_iter=20)
         VI.run()
+        t2 = time.time()
+        # print(f"VI costs {t2 - t1}s")
+        # print(f"Did {VI.iter} iterations")
         # # For theory proving
         # with open('mdp_values.pkl', 'wb') as pklf:
         #     pickle.dump((self.label, self.goal, self.layout,
@@ -197,7 +227,8 @@ class MDPAgent(object):
 
         # Alt2: Update the belief and replan
         if prev_actions is not None and self.belief_update:
-            self.beliefs = self.update_belief(self.beliefs, self.prev_locations, prev_actions)
+            self.beliefs = self.update_belief(self.beliefs, self.prev_locations, prev_actions,
+                                              soft=self.soft_update)
             self.policy = self.translate_solve()
 
         if self.verbose:
@@ -221,9 +252,11 @@ class MDPAgent(object):
                     else:
                         belief_map[r, c] = np.round(probs[idx], 3)
                         idx += 1
-            print(f'=== Belief({self.label + 1} -> {i + 1}) ===')
+            print(f'\n=== Belief({self.label + 1} -> {i + 1}) ===')
             print(belief_map)
-        print()
+
+    def close(self):
+        pass
 
 
 class HistoryMDPAgent(MDPAgent):

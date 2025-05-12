@@ -5,7 +5,7 @@ __pycache__/
 .DS_Store
 
 *.pkl
-!exp/INFO*
+!INFO*
 
 *.log
 

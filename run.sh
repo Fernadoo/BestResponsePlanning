@@ -1,1 +1,0 @@
-nohup python -u experiments.py --map small --starts 1_1 --num-sim 1e3 > exp.log 2>&1 &

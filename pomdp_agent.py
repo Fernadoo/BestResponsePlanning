@@ -308,7 +308,7 @@ class QMDPAgent(MDPAgent):
         if prev_actions is not None and self.belief_update:
             self.beliefs = self.update_belief(self.beliefs, self.prev_locations, prev_actions)
 
-        self.print_belief(self.beliefs)
+        # self.print_belief(self.beliefs)
 
         # policy execution: maximize mixed Q values
         Q_mdp = self.policy

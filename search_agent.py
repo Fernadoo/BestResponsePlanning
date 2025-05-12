@@ -28,9 +28,8 @@ def astar(init, goal, layout):
         successors = []
         for a in range(5):
             succ_loc = move(curr_loc, a)
-            if layout[succ_loc] == 1 or\
-                    succ_loc[0] not in range(1, nrows + 1) or\
-                    succ_loc[1] not in range(1, ncols + 1):
+            if succ_loc[0] not in range(nrows) or succ_loc[1] not in range(ncols) or\
+                    layout[succ_loc] == 1:
                 continue
             heu = euc_dist(succ_loc, goal)
             succ_node = Node(heu + g + 1, g + 1, a, succ_loc)
@@ -87,6 +86,9 @@ class AStarAgent(object):
         self.round += 1
         return action
 
+    def close(self):
+        pass
+
 
 """
 DIJKSTRA SEARCH
@@ -107,9 +109,8 @@ def dijkstra(init, layout):
         successors = []
         for a in range(5):
             succ_loc = move(curr_loc, a)
-            if layout[succ_loc] == 1 or\
-                    succ_loc[0] not in range(1, nrows + 1) or\
-                    succ_loc[1] not in range(1, ncols + 1):
+            if succ_loc[0] not in range(nrows) or succ_loc[1] not in range(ncols) or\
+                    layout[succ_loc] == 1:
                 continue
             succ_node = Node(g + 1, a, succ_loc)
             successors.append(succ_node)
@@ -156,3 +157,6 @@ class DijkstraAgent(object):
 
         action = self.policy[hash(locations[self.label])]
         return action
+
+    def close(self):
+        pass

@@ -34,8 +34,13 @@ class Animation:
                     )
 
         aspect = len(self.my_map) / len(self.my_map[0])
-
-        self.fig = plt.figure(frameon=False, figsize=(4 * aspect, 4))
+        if min(my_map.shape) in range(10):
+            base_size = 4
+        elif min(my_map.shape) in range(10, 20):
+            base_size = 6
+        else:
+            base_size = 8
+        self.fig = plt.figure(frameon=False, figsize=(base_size * aspect, base_size))
         self.ax = self.fig.add_subplot(111, aspect='equal')
         self.fig.subplots_adjust(left=0, right=1, bottom=0, top=1,
                                  wspace=None, hspace=None)
@@ -87,6 +92,10 @@ class Animation:
             )
 
         # self.sensors = dict()
+        if max(my_map.shape) in range(15):
+            fontsize = 10
+        elif max(my_map.shape) >= 15:
+            fontsize = 8
         for i in range(len(self.paths)):
             name = f'{i + 1}'
             self.agents[i] = Circle((self.starts[i][0], self.starts[i][1]),
@@ -99,7 +108,8 @@ class Animation:
             self.T = max(self.T, len(self.paths[i]) - 1)
             self.agent_names[i] = self.ax.text(self.starts[i][0],
                                                self.starts[i][1],
-                                               name)
+                                               name,
+                                               fontsize=fontsize)
 
             self.agent_names[i].set_horizontalalignment('center')
             self.agent_names[i].set_verticalalignment('center')

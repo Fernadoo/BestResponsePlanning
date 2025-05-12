@@ -34,10 +34,10 @@ def parse_map_from_file(map_config):
 
 
 def parse_locs(locs):
-    loc_dict = dict()
+    locations = []
     for i, l in enumerate(locs):
-        loc_dict[f'p{i + 1}'] = eval(l.replace('_', ','))
-    return loc_dict
+        locations.append(eval(l.replace('_', ',')))
+    return locations
 
 
 def show_args(args):
@@ -168,9 +168,8 @@ def T_mapf(label, goal, layout, locations, action_profile):
     succ_locations = []
     for i in range(len(locations)):
         succ_loc = move(locations[i], action_profile[i])
-        if layout[succ_loc] == 1 or\
-                succ_loc[0] not in range(1, nrows + 1) or\
-                succ_loc[1] not in range(1, ncols + 1):
+        if succ_loc[0] not in range(nrows) or succ_loc[1] not in range(ncols) or\
+                layout[succ_loc] == 1:
             # Go into walls -> bounce back
             succ_locations.append(locations[i])
         else:
@@ -186,7 +185,7 @@ def T_mapf(label, goal, layout, locations, action_profile):
     return tuple(succ_locations)
 
 
-def R_mapf(label, goal, pred_locs, succ_locs, penalty=1e6):
+def R_mapf(label, goal, pred_locs, succ_locs, penalty=3e4, goal_reward=1e3):
     """
     The multi-agent env reward for this pivotal agent:
     given the prev and succ locations,
@@ -201,8 +200,9 @@ def R_mapf(label, goal, pred_locs, succ_locs, penalty=1e6):
         if i != label and other_loc == succ_locs[label]:
             return -penalty
 
+    # check collision first, in case of last-step collisions
     if succ_locs[label] == goal:
-        return 1000
+        return goal_reward
     return -1
 
 
@@ -212,9 +212,8 @@ def get_avai_actions_mapf(loc, layout):
     avai_actions = []
     for a in range(5):
         succ_loc = move(loc, a)
-        if layout[succ_loc] == 1 or\
-                succ_loc[0] not in range(1, nrows + 1) or\
-                succ_loc[1] not in range(1, ncols + 1):
+        if succ_loc[0] not in range(nrows) or succ_loc[1] not in range(ncols) or\
+                layout[succ_loc] == 1:
             continue
         avai_actions.append(a)
     return avai_actions

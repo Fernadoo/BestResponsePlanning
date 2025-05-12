@@ -27,6 +27,7 @@ __pycache__/
 *.mov
 
 *.mp4
+!videos/*.mp4
 
 *.gif
 

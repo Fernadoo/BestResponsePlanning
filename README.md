@@ -223,7 +223,7 @@ For advanced agents, e.g., tree-search-based ones `UniformTreeSearch` or `Asymme
 | `sample_select`     | Number of stochastic selection at each `EXP` node            |
 | `pUCB`              | If set to `True`, use the `pUCB` formula; otherwise, use the vanilla `UCB` formula |
 
-We present one demo of our result using belief-incorporated MCTS with CBS as its node evolution (a hybrid approach combining reward-incentivized and constraint-based modules)
+We present one demo of our result using belief-incorporated MCTS with CBS as its node evolution (a hybrid approach combining reward-incentivized and constraint-based modules). In this example, the controlled agent is with ID **1**.
 
 
 

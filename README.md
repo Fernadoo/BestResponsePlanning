@@ -1,6 +1,6 @@
 # Single-Agent Planning in a Multi-Agent System
 
-![teaser](/Users/fernando/Library/CloudStorage/OneDrive-HKUSTConnect/BestResponse/ma_planning/assets/teaser.png)
+![teaser](assets/teaser.png)
 
 ### Intro
 
@@ -120,7 +120,7 @@ python experiments_rand.py --map small --cfg small --agents 2 \
 
 This command means the conduct a comprehensive evaluation for all the agents with planner from $type_0$ to $type_{12}$, against a group of rational opponents (see our paper for a more specific definition). The whole evaluation will be paralleled with **8** processes. Upon the completion, it will plot a figure as follows,
 
-<img src="/Users/fernando/Library/CloudStorage/OneDrive-HKUSTConnect/BestResponse/ma_planning/assets/small_mean_std_rand.png" alt="small_mean_std_rand" style="zoom:30%;" />
+<img src="assets/small_mean_std_rand.png" alt="small_mean_std_rand" style="zoom:30%;" />
 
 **Again, one might as well try the `--help` option to obtain the detailed usage,**
 

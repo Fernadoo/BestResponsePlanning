@@ -20,7 +20,7 @@ The repo implements various planners for controlling one single agent in an envi
 The whole project is developed under ***Python 3.9.18***
 
 ```shell
-conda env create BRP python=3.9.18
+conda create -n BRP python=3.9.18
 ```
 
 Launch the virtual environment, and install the dependencies

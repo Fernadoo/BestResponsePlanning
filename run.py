@@ -31,10 +31,10 @@ def get_args():
                         help='Specify a map')
     parser.add_argument('--starts', dest='starts', type=str, nargs='+',
                         help='Specify the starts for each agent,'
-                             'e.g. 2_0 0_2')
+                             'e.g. 2_0 0_2, or just `random`')
     parser.add_argument('--goals', dest='goals', type=str, nargs='+',
                         help='Specify the goals for each agent,'
-                             'e.g. 2_0 0_2')
+                             'e.g. 2_0 0_2, or just `random`')
     parser.add_argument('--vis', dest='vis', action='store_true',
                         help='Visulize the process')
     parser.add_argument('--save', dest='save', type=str,
@@ -127,10 +127,10 @@ if __name__ == '__main__':
     # agents.append(DijkstraAgent(1, args.goals[1]))
     # agents.append(SafeAgent(1, args.goals[1]))
     # agents.append(POMDPAgent(1, args.goals[1], exist_policy=True))
-    # agents.append(MDPAgent(1, args.goals[1], belief_update=False, verbose=True))
+    agents.append(MDPAgent(1, args.goals[1], belief_update=True, verbose=True))
     # agents.append(MetaAgent(1, args.goals[1], belief_update=True, verbose=False,
     #                         meta_policy=meta_square))  # `meta_small` or `meta_square`
-    agents.append(CBSAgent(1, args.goals[1], soft_update=2e-5, verbose=True))
+    # agents.append(CBSAgent(1, args.goals[1], soft_update=2e-5, verbose=True))
     # agents.append(QMDPAgent(1, args.goals[1]))
     # agents.append(UniformTreeSearchAgent(1, args.goals[1],
     #                                      belief_update=True, depth=2, node_eval='HEU-C',

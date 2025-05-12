@@ -120,7 +120,7 @@ class MAPF(object):
                 action_profile.append(self.agents[i].act(self.state))
                 if i == 0 and rnd < 5:
                     t1 = time.time()
-                    print(f'Step {rnd}: {t1 - t0}')
+                    print(f'Step {rnd}: took {t1 - t0}s')
                     totalT.append(t1 - t0)
             _, action_profile, locations, _ = self.transit(action_profile)
             collisions = check_collision(history[-1][-1], locations)

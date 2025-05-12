@@ -462,7 +462,7 @@ def compute_cbs_and_plot(layout, random_tests, fig, ax, load_from=None):
 
 def get_args():
     parser = argparse.ArgumentParser(
-        description='Multi-Agent Planning.'
+        description='Evaluation.'
     )
 
     parser.add_argument('--map', dest='map', type=str,
@@ -476,7 +476,7 @@ def get_args():
     parser.add_argument('--oppo-type', dest='oppo_type', type=str, default='rational',
                         help='Specify the type of opponents among [malicous, rational, evolving]')
     parser.add_argument('--num-sim', dest='num_sim', type=float, default=1e3,
-                        help='Specify the figsize')
+                        help='Specify the number of tesing simulations')
     parser.add_argument('--size', dest='size', type=int, default=7,
                         help='Specify the figsize')
     parser.add_argument('--plot', dest='plot', action='store_true',

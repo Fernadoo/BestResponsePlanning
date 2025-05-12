@@ -43,7 +43,11 @@ python run.py --agents 2 --map small --starts 1_1 1_6 --goals 6_6 6_1 --vis
 
 where the `--agent` option specifies the number of agents, the `--map` option specifies the map layout from the `maps/` folder, the `--starts` option specifies the initial location for each agent (so does the `--goal` option), and finally the `--vis` option will render such an animation below,
 
-Xxx animation here xxx
+
+
+https://github.com/user-attachments/assets/3a76c2ee-b209-4957-9934-b8fc78d0762e
+
+
 
 There will also appear some textual output resembling the following,
 
@@ -221,7 +225,11 @@ For advanced agents, e.g., tree-search-based ones `UniformTreeSearch` or `Asymme
 
 We present one demo of our result using belief-incorporated MCTS with CBS as its node evolution (a hybrid approach combining reward-incentivized and constraint-based modules)
 
-Xxx video here xxx
+
+
+
+https://github.com/user-attachments/assets/cdbd92f8-0df2-4c88-8006-71bc8455a028
+
 
 
 

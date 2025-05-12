@@ -2,6 +2,13 @@
 
 ![teaser](assets/teaser.png)
 
+[![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+[![Accepted](https://img.shields.io/badge/Accepted-AAMAS%202025-purple)](https://aamas2025.org/index.php/conference/program/accepted-papers/)
+[![arXiv](https://img.shields.io/badge/arXiv-2502.08950-b31b1b.svg)](https://arxiv.org/abs/2502.08950)
+[![PyPI](https://img.shields.io/badge/PyPI-pymdptoolbox-green)](https://pypi.org/project/pymdptoolbox/)
+[![Solver](https://img.shields.io/badge/Solver-EECBS-teal)](https://github.com/Jiaoyang-Li/EECBS)
+[![Solver](https://img.shields.io/badge/Solver-pomdp--solve-navy)](http://www.pomdp.org/code/index.html)
+
 ### Intro
 
 The repo implements various planners for controlling one single agent in an environment involving multiple other agents. The controlled agent has very limited prior knowledge about its opponents. Therefore, in principle, this pivotal agent is faced with a trade-off between exploiting its currently accumulated information about the other agents and exploring further to improve future (re-)planning.

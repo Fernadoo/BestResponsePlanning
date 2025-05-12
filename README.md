@@ -1,6 +1,6 @@
 # Single-Agent Planning in a Multi-Agent System
 
-Xxx teaser here xxx
+![teaser](/Users/fernando/Library/CloudStorage/OneDrive-HKUSTConnect/BestResponse/ma_planning/assets/teaser.png)
 
 ### Intro
 
@@ -120,7 +120,7 @@ python experiments_rand.py --map small --cfg small --agents 2 \
 
 This command means the conduct a comprehensive evaluation for all the agents with planner from $type_0$ to $type_{12}$, against a group of rational opponents (see our paper for a more specific definition). The whole evaluation will be paralleled with **8** processes. Upon the completion, it will plot a figure as follows,
 
-Xxx figure here xxx
+<img src="/Users/fernando/Library/CloudStorage/OneDrive-HKUSTConnect/BestResponse/ma_planning/assets/small_mean_std_rand.png" alt="small_mean_std_rand" style="zoom:30%;" />
 
 **Again, one might as well try the `--help` option to obtain the detailed usage,**
 
@@ -219,7 +219,13 @@ For advanced agents, e.g., tree-search-based ones `UniformTreeSearch` or `Asymme
 | `sample_select`     | Number of stochastic selection at each `EXP` node            |
 | `pUCB`              | If set to `True`, use the `pUCB` formula; otherwise, use the vanilla `UCB` formula |
 
+We present one demo of our result using belief-incorporated MCTS with CBS as its node evolution (a hybrid approach combining reward-incentivized and constraint-based modules)
 
+Xxx video here xxx
+
+
+
+---
 
 ***Feel free to open an issue or pull-request. Have fun!***
 
